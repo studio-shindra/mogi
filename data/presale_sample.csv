@@ -1,0 +1,4 @@
+guest_name,guest_email,guest_phone,pre_sale_type,seat_tier_code,quantity,memo
+山田太郎,yamada@example.com,090-1234-5678,第一次先行,front,2,
+佐藤花子,sato@example.com,,第一次先行,center,1,友人紹介
+鈴木一郎,,,第一次先行,rear,1,招待扱い
