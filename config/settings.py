@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import dj_database_url
 from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -60,14 +61,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # --- Database --------------------------------------------------------
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="mogi"),
-        "USER": config("DB_USER", default="mogi"),
-        "PASSWORD": config("DB_PASSWORD", default="mogi"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5433"),
-    }
+    "default": dj_database_url.config(
+        default="postgresql://mogi:mogi@localhost:5433/mogi",
+        conn_max_age=600,
+    )
 }
 
 # --- Auth ------------------------------------------------------------
