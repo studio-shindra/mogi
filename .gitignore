@@ -7,3 +7,5 @@ dist/
 node_modules/
 .venv/
 venv/
+# Local Netlify folder
+.netlify
