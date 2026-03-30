@@ -5,7 +5,7 @@ const client = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Django session cookie を送る
+  withCredentials: false,
 })
 
 // CSRF トークンを cookie から取得して送る
