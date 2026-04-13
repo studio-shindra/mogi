@@ -81,4 +81,4 @@ class SeatTier(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.performance} - {self.name}"
+        return self.name
