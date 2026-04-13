@@ -20,4 +20,18 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+// 401/403 レスポンス時にログイン画面へリダイレクト（staff ページのみ）
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      (error.response?.status === 401 || error.response?.status === 403) &&
+      window.location.pathname.startsWith('/staff')
+    ) {
+      window.location.href = '/admin/login/?next=' + encodeURIComponent(window.location.pathname)
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default client

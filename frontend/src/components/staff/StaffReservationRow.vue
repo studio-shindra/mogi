@@ -13,13 +13,16 @@ const acting = ref(false)
 const typeLabel = { card: 'カード', cash: '現金', invite: '招待' }
 
 async function onMarkPaid() {
+  const name = props.reservation.guest_name
+  if (!window.confirm(`${name} さんの現金受領を記録しますか？`)) return
   acting.value = true
   emit('mark-paid', props.reservation)
-  // 親が async で処理するので少し待つ
   setTimeout(() => (acting.value = false), 500)
 }
 
 async function onCheckIn() {
+  const name = props.reservation.guest_name
+  if (!window.confirm(`${name} さんを入場処理しますか？`)) return
   acting.value = true
   emit('check-in', props.reservation)
   setTimeout(() => (acting.value = false), 500)

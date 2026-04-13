@@ -1,7 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useStaffActions } from '../composables/useStaffActions.js'
-import { mockPerformanceOptions } from '../mock/reservations.js'
 import StaffSearchBar from '../components/staff/StaffSearchBar.vue'
 import StaffReservationRow from '../components/staff/StaffReservationRow.vue'
 import WalkInForm from '../components/staff/WalkInForm.vue'
@@ -10,7 +9,8 @@ const staff = useStaffActions()
 
 const showWalkIn = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
+  await staff.loadPerformances()
   staff.search()
 })
 
@@ -23,8 +23,12 @@ async function handleCheckIn(reservation) {
 }
 
 async function handleWalkIn(data) {
-  await staff.createWalkIn(data)
-  showWalkIn.value = false
+  try {
+    await staff.createWalkIn(data)
+    showWalkIn.value = false
+  } catch {
+    // flash はuseStaffActions側で設定済み
+  }
 }
 </script>
 
@@ -40,11 +44,21 @@ async function handleWalkIn(data) {
       </button>
     </div>
 
+    <!-- フラッシュメッセージ -->
+    <div
+      v-if="staff.flash.value"
+      class="alert alert-sm py-2 px-3 mb-3"
+      :class="staff.flash.value.type === 'success' ? 'alert-success' : 'alert-danger'"
+      role="alert"
+    >
+      {{ staff.flash.value.message }}
+    </div>
+
     <!-- 当日券登録フォーム -->
     <div v-if="showWalkIn" class="card mb-3">
       <div class="card-body">
         <h6 class="card-title mb-3">当日券登録</h6>
-        <WalkInForm @created="handleWalkIn" />
+        <WalkInForm :performances="staff.performances.value" @created="handleWalkIn" />
       </div>
     </div>
 
@@ -52,7 +66,7 @@ async function handleWalkIn(data) {
     <StaffSearchBar
       :search-query="staff.searchQuery.value"
       :selected-performance-id="staff.selectedPerformanceId.value"
-      :performances="mockPerformanceOptions"
+      :performances="staff.performances.value"
       @update:search-query="(v) => (staff.searchQuery.value = v)"
       @update:selected-performance-id="(v) => (staff.selectedPerformanceId.value = v)"
       @search="staff.search()"

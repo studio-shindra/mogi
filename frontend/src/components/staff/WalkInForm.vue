@@ -1,14 +1,22 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { mockEventDetail } from '../../mock/events.js'
+import { ref, computed, watch } from 'vue'
+
+const props = defineProps({
+  performances: { type: Array, default: () => [] },
+})
 
 const emit = defineEmits(['created'])
 
-const performances = mockEventDetail.performances
-const selectedPerfId = ref(performances[0]?.id ?? null)
+const selectedPerfId = ref(props.performances[0]?.id ?? null)
+
+watch(() => props.performances, (perfs) => {
+  if (perfs.length && !selectedPerfId.value) {
+    selectedPerfId.value = perfs[0].id
+  }
+})
 
 const selectedPerf = computed(() =>
-  performances.find((p) => p.id === selectedPerfId.value),
+  props.performances.find((p) => p.id === selectedPerfId.value),
 )
 
 const seatTiers = computed(() => selectedPerf.value?.seat_tiers ?? [])
@@ -57,7 +65,7 @@ async function handleSubmit() {
       <div class="col-md-6">
         <label class="form-label small fw-bold">公演</label>
         <select class="form-select form-select-sm" v-model="selectedPerfId">
-          <option v-for="p in performances" :key="p.id" :value="p.id">
+          <option v-for="p in props.performances" :key="p.id" :value="p.id">
             {{ p.label }}
           </option>
         </select>

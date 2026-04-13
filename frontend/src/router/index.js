@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import client from '../api/client.js'
 
 const routes = [
   {
@@ -51,6 +52,22 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) return true
+
+  try {
+    await client.get('/staff/reservations/', { params: { search: '__auth_check__' } })
+    return true
+  } catch (e) {
+    if (e.response?.status === 401 || e.response?.status === 403) {
+      const loginUrl = '/admin/login/?next=' + encodeURIComponent(to.fullPath)
+      window.location.href = loginUrl
+      return false
+    }
+    return true
+  }
 })
 
 export default router
