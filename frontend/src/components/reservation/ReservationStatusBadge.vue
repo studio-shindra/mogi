@@ -11,6 +11,7 @@ const badges = computed(() => {
   const list = []
 
   const statusMap = {
+    draft: { label: '仮受付', cls: 'bg-info text-dark' },
     pending: { label: '仮予約', cls: 'bg-warning text-dark' },
     confirmed: { label: '確定', cls: 'bg-success' },
     cancelled: { label: 'キャンセル', cls: 'bg-secondary' },

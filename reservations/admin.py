@@ -36,7 +36,14 @@ class ReservationAdmin(admin.ModelAdmin):
         js = ("reservations/js/filter_seat_tier.js",)
 
     def save_model(self, request, obj, form, change):
+        # 新規作成時: seat_tier または reservation_type が未設定なら draft にする
+        if not change:
+            if not obj.seat_tier_id or not obj.reservation_type:
+                obj.status = Reservation.Status.DRAFT
+                obj.payment_status = Reservation.PaymentStatus.UNPAID
+
         super().save_model(request, obj, form, change)
+
         # 新規作成時のみメール送信（編集時は送らない）
         if not change and obj.guest_email:
             try:

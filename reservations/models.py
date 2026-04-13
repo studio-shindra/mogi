@@ -15,6 +15,7 @@ class Reservation(models.Model):
         INVITE = "invite", "招待"
 
     class Status(models.TextChoices):
+        DRAFT = "draft", "仮受付"
         PENDING = "pending", "仮予約"
         CONFIRMED = "confirmed", "確定"
         CANCELLED = "cancelled", "キャンセル"
@@ -36,6 +37,8 @@ class Reservation(models.Model):
         on_delete=models.PROTECT,
         related_name="reservations",
         verbose_name="席種",
+        null=True,
+        blank=True,
     )
 
     # --- 枚数 ---
@@ -60,6 +63,8 @@ class Reservation(models.Model):
         "予約種別",
         max_length=10,
         choices=ReservationType.choices,
+        blank=True,
+        default="",
     )
     status = models.CharField(
         "ステータス",

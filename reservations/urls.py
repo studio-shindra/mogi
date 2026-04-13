@@ -6,6 +6,7 @@ urlpatterns = [
     # Public (認証不要)
     path("reservations/", views.reservation_create, name="reservation-create"),
     path("reservations/<str:token>/", views.reservation_by_token, name="reservation-detail"),
+    path("reservations/<str:token>/complete/", views.reservation_complete, name="reservation-complete"),
     path("reservations/<str:token>/checkin/", views.reservation_checkin, name="reservation-checkin"),
     path("reservations/<str:token>/checkout/", views.reservation_checkout, name="reservation-checkout"),
     # Staff (認証必須)

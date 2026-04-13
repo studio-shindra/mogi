@@ -26,6 +26,15 @@ export async function checkin(token) {
   return data
 }
 
+export async function completeReservation(token, payload) {
+  if (USE_MOCK) {
+    console.log('mock completeReservation', token, payload)
+    return { status: 'pending', reservation_type: payload.reservation_type }
+  }
+  const { data } = await client.post(`/reservations/${token}/complete/`, payload)
+  return data
+}
+
 export async function startCheckout(token) {
   if (USE_MOCK) {
     console.log('mock startCheckout', token)

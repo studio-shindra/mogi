@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from .models import Reservation
 from .serializers import (
+    CompleteReservationSerializer,
     ReservationCreateSerializer,
     ReservationDetailSerializer,
     StaffReservationSerializer,
@@ -97,6 +98,35 @@ def reservation_checkin(request, token):
         "checked_in": True,
         "checked_in_at": reservation.checked_in_at,
     })
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reservation_complete(request, token):
+    """POST /api/reservations/<token>/complete/ — 仮受付を完成させる"""
+    try:
+        reservation = Reservation.objects.select_related(
+            "performance__event", "seat_tier",
+        ).get(token=token)
+    except Reservation.DoesNotExist:
+        return Response(
+            {"detail": "予約が見つかりません"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    serializer = CompleteReservationSerializer(
+        data=request.data,
+        context={"reservation": reservation},
+    )
+    serializer.is_valid(raise_exception=True)
+    reservation = serializer.save()
+
+    # 完成後の最新状態を返す
+    reservation.refresh_from_db()
+    reservation = Reservation.objects.select_related(
+        "performance__event", "seat_tier",
+    ).get(pk=reservation.pk)
+    return Response(ReservationDetailSerializer(reservation).data)
 
 
 # ====================================================================

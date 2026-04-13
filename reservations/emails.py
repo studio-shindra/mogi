@@ -13,41 +13,60 @@ def send_reservation_email(reservation):
     performance = reservation.performance
     seat_tier = reservation.seat_tier
 
-    subject = f"【{performance.event.title}】ご予約ありがとうございます"
+    is_draft = reservation.status == "draft"
+
+    if is_draft:
+        subject = f"【{performance.event.title}】ご予約のお手続きをお願いします"
+    else:
+        subject = f"【{performance.event.title}】ご予約ありがとうございます"
 
     # --- 本文組み立て ---
     lines = [
         f"{reservation.guest_name} 様",
         "",
-        "ご予約ありがとうございます。",
-        "以下の内容でご予約を承りました。",
-        "",
-        f"公演: {performance}",
-        f"席種: {seat_tier.name}",
-        f"枚数: {reservation.quantity}枚",
     ]
 
-    # 決済案内
-    if reservation.reservation_type == "card" and reservation.payment_status == "unpaid":
+    if is_draft:
         lines += [
+            "ご予約を仮受付いたしました。",
+            "下記URLより席種・お支払い方法を選択して予約を完成させてください。",
             "",
-            "下記URLより事前決済をお願いいたします。",
-            reservation_url,
-        ]
-    elif reservation.reservation_type == "invite":
-        lines += [
+            f"公演: {performance}",
+            f"枚数: {reservation.quantity}枚",
             "",
-            "ご招待でのご予約です。",
-            "",
-            "予約詳細は下記URLよりご確認いただけます。",
             reservation_url,
         ]
     else:
         lines += [
+            "ご予約ありがとうございます。",
+            "以下の内容でご予約を承りました。",
             "",
-            "予約詳細は下記URLよりご確認いただけます。",
-            reservation_url,
+            f"公演: {performance}",
+            f"席種: {seat_tier.name if seat_tier else '未選択'}",
+            f"枚数: {reservation.quantity}枚",
         ]
+
+        # 決済案内
+        if reservation.reservation_type == "card" and reservation.payment_status == "unpaid":
+            lines += [
+                "",
+                "下記URLより事前決済をお願いいたします。",
+                reservation_url,
+            ]
+        elif reservation.reservation_type == "invite":
+            lines += [
+                "",
+                "ご招待でのご予約です。",
+                "",
+                "予約詳細は下記URLよりご確認いただけます。",
+                reservation_url,
+            ]
+        else:
+            lines += [
+                "",
+                "予約詳細は下記URLよりご確認いただけます。",
+                reservation_url,
+            ]
 
     lines += [
         "",
