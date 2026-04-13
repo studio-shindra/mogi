@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from reservations.emails import send_payment_complete_email
 from reservations.models import Reservation
 
 
@@ -32,7 +33,10 @@ def stripe_webhook(request):
 
 def _handle_checkout_completed(session):
     """checkout.session.completed の処理。冪等。"""
-    reservation_token = session.get("metadata", {}).get("reservation_token")
+    try:
+        reservation_token = session["metadata"]["reservation_token"]
+    except (KeyError, TypeError):
+        return
     if not reservation_token:
         return
 
@@ -48,3 +52,5 @@ def _handle_checkout_completed(session):
     reservation.status = Reservation.Status.CONFIRMED
     reservation.payment_status = Reservation.PaymentStatus.PAID
     reservation.save(update_fields=["status", "payment_status", "updated_at"])
+
+    send_payment_complete_email(reservation)

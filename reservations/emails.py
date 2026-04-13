@@ -82,3 +82,57 @@ def send_reservation_email(reservation):
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[reservation.guest_email],
     )
+
+
+def send_payment_complete_email(reservation):
+    """決済完了時にゲストへ確認メールを送信する。"""
+    if not reservation.guest_email:
+        return
+
+    performance = reservation.performance
+    event = performance.event
+    seat_tier = reservation.seat_tier
+
+    reservation_url = (
+        f"{settings.FRONTEND_URL}/reservation/{reservation.token}"
+    )
+
+    price = seat_tier.price_card if seat_tier else 0
+    total = price * reservation.quantity
+
+    subject = f"【{event.title}】決済が完了しました"
+
+    lines = [
+        f"{reservation.guest_name} 様",
+        "",
+        "決済が完了しました。ご予約ありがとうございます。",
+        "",
+        "━━━ ご予約内容 ━━━",
+        "",
+        f"作品: {event.title}",
+        f"公演: {performance.label}",
+        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
+        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+        f"会場: {event.venue_name}" if event.venue_name else "",
+        f"席種: {seat_tier.name}" if seat_tier else "",
+        f"枚数: {reservation.quantity}枚",
+        f"金額: ¥{total:,}",
+        "",
+        "━━━━━━━━━━━━━━━━",
+        "",
+        "予約詳細は下記URLよりご確認いただけます。",
+        reservation_url,
+        "",
+        "---",
+        event.organizer_name or "",
+    ]
+
+    # 空行が連続しないよう空文字の行はそのまま残す
+    body = "\n".join(lines)
+
+    send_mail(
+        subject=subject,
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[reservation.guest_email],
+    )

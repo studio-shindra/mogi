@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-only-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app", cast=Csv())
 
 # --- Apps -----------------------------------------------------------
 INSTALLED_APPS = [
@@ -105,14 +105,14 @@ REST_FRAMEWORK = {
 # --- CORS ------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173",
+    default="http://localhost:5173,https://mogi-app.com,https://mogi-app.netlify.app",
     cast=Csv(),
 )
 
 # --- CSRF ------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:5173,http://localhost:8000",
+    default="http://localhost:5173,http://localhost:8000,https://mogi-app.com,https://mogi-app.netlify.app",
     cast=Csv(),
 )
 
@@ -120,7 +120,7 @@ CSRF_TRUSTED_ORIGINS = config(
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
-SITE_URL = config("SITE_URL", default="http://localhost:5173")
+SITE_URL = config("SITE_URL", default="https://mogi-app.com")
 
 # --- Email -----------------------------------------------------------
 EMAIL_BACKEND = config(
@@ -135,4 +135,5 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="info@studio-shindra.com")
 
 # --- Frontend --------------------------------------------------------
-FRONTEND_URL = config("FRONTEND_URL", default="https://mogi-app.netlify.app")
+FRONTEND_URL = config("FRONTEND_URL", default="https://mogi-app.com")
+STAGING_URL = config("STAGING_URL", default="https://mogi-app.netlify.app")
