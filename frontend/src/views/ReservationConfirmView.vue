@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchReservation } from '../api/reservations.js'
-import { IconTicket, IconArmchair, IconMapPin, IconCalendar, IconScan } from '@tabler/icons-vue'
+import { fetchReservation, startCheckout } from '../api/reservations.js'
+import { IconTicket, IconArmchair, IconMapPin, IconCalendar, IconScan, IconCreditCard } from '@tabler/icons-vue'
 import ReservationStatusBadge from '../components/reservation/ReservationStatusBadge.vue'
 
 const props = defineProps({ token: String })
@@ -11,8 +11,29 @@ const route = useRoute()
 const reservation = ref(null)
 const loading = ref(true)
 const notFound = ref(false)
+const checkoutLoading = ref(false)
 
 const checkoutStatus = computed(() => route.query.checkout || null)
+
+const canPay = computed(() => {
+  if (!reservation.value) return false
+  return (
+    reservation.value.reservation_type === 'card' &&
+    reservation.value.payment_status === 'unpaid' &&
+    reservation.value.status !== 'cancelled'
+  )
+})
+
+async function goToCheckout() {
+  checkoutLoading.value = true
+  try {
+    const { checkout_url } = await startCheckout(props.token)
+    window.location.href = checkout_url
+  } catch (e) {
+    alert('決済ページの取得に失敗しました。もう一度お試しください。')
+    checkoutLoading.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -146,6 +167,20 @@ const typeLabel = { card: 'カード決済', cash: '当日現金払い', invite:
           <div v-if="reservation.guest_email" class="small text-muted">{{ reservation.guest_email }}</div>
           <div v-if="reservation.guest_phone" class="small text-muted">{{ reservation.guest_phone }}</div>
         </div>
+      </div>
+
+      <!-- 決済ボタン -->
+      <div v-if="canPay" class="d-grid mb-3">
+        <button
+          class="btn btn-lg py-3 d-flex align-items-center justify-content-center gap-2"
+          style="background: var(--mogi); color: #fff;"
+          :disabled="checkoutLoading"
+          @click="goToCheckout"
+        >
+          <span v-if="checkoutLoading" class="spinner-border spinner-border-sm" />
+          <IconCreditCard v-else :size="22" />
+          決済へ進む
+        </button>
       </div>
 
       <!-- セルフチェックイン -->
