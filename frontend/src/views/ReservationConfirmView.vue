@@ -329,13 +329,11 @@ const typeLabel = { card: 'カード決済', cash: '当日現金払い', invite:
         <!-- 決済ボタン -->
         <div v-if="canPay" class="d-grid mb-3">
           <button
-            class="btn btn-lg py-3 d-flex align-items-center justify-content-center gap-2"
-            style="background: var(--mogi); color: #fff;"
+            class="btn btn-primary w-100 py-3"
             :disabled="checkoutLoading"
             @click="goToCheckout"
           >
-            <span v-if="checkoutLoading" class="spinner-border spinner-border-sm" />
-            <IconCreditCard v-else :size="22" />
+            <span v-if="checkoutLoading" class="spinner-border spinner-border-sm me-2" />
             決済へ進む
           </button>
         </div>
