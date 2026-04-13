@@ -18,4 +18,5 @@ urlpatterns = [
         views.PerformanceViewSet.as_view({"get": "retrieve"}),
         name="performance-detail",
     ),
+    path("seat-tiers/", views.seat_tiers_for_performance, name="seat-tiers-for-performance"),
 ]

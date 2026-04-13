@@ -32,6 +32,9 @@ class ReservationAdmin(admin.ModelAdmin):
     search_fields = ("guest_name", "guest_email", "guest_phone", "token")
     readonly_fields = ("token", "created_at", "updated_at")
 
+    class Media:
+        js = ("reservations/js/filter_seat_tier.js",)
+
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         # 新規作成時のみメール送信（編集時は送らない）

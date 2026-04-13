@@ -1,10 +1,21 @@
 from django.db.models import Q, Sum, Value
 from django.db.models.functions import Coalesce
+from django.http import JsonResponse
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
-from .models import Event, Performance
+from .models import Event, Performance, SeatTier
 from .serializers import EventListSerializer, EventSerializer, PerformanceSerializer
+
+
+def seat_tiers_for_performance(request):
+    """管理画面用: performance_id で席種を返す"""
+    performance_id = request.GET.get("performance_id")
+    if not performance_id:
+        return JsonResponse([], safe=False)
+    tiers = SeatTier.objects.filter(performance_id=performance_id).order_by("sort_order")
+    data = [{"id": t.id, "name": t.name} for t in tiers]
+    return JsonResponse(data, safe=False)
 
 
 def _annotate_seat_tiers(qs):
