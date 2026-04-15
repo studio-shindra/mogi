@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-only-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app,.ngrok-free.dev,.ngrok-free.app,.ngrok.io", cast=Csv())
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app", cast=Csv())
 
 # --- Apps -----------------------------------------------------------
 INSTALLED_APPS = [
