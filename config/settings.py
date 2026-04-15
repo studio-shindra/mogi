@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-only-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app", cast=Csv())
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app,.ngrok-free.dev,.ngrok-free.app,.ngrok.io", cast=Csv())
 
 # --- Apps -----------------------------------------------------------
 INSTALLED_APPS = [
@@ -105,14 +105,14 @@ REST_FRAMEWORK = {
 # --- CORS ------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,https://mogi-app.com,https://mogi-app.netlify.app",
+    default="http://localhost:5173,http://localhost:5174,https://mogi-app.com,https://mogi-app.netlify.app",
     cast=Csv(),
 )
 
 # --- CSRF ------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:5173,http://localhost:8000,https://mogi-app.com,https://mogi-app.netlify.app",
+    default="http://localhost:5173,http://localhost:5174,http://localhost:8000,http://localhost:8001,https://mogi-app.com,https://mogi-app.netlify.app",
     cast=Csv(),
 )
 
@@ -121,6 +121,13 @@ STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 SITE_URL = config("SITE_URL", default="https://mogi-app.com")
+
+# --- Square ----------------------------------------------------------
+SQUARE_ACCESS_TOKEN = config("SQUARE_ACCESS_TOKEN", default="")
+SQUARE_ENVIRONMENT = config("SQUARE_ENVIRONMENT", default="sandbox")
+SQUARE_LOCATION_ID = config("SQUARE_LOCATION_ID", default="")
+SQUARE_WEBHOOK_SIGNATURE_KEY = config("SQUARE_WEBHOOK_SIGNATURE_KEY", default="")
+SQUARE_WEBHOOK_NOTIFICATION_URL = config("SQUARE_WEBHOOK_NOTIFICATION_URL", default="")
 
 # --- Email -----------------------------------------------------------
 EMAIL_BACKEND = config(

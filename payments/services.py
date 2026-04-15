@@ -1,53 +1,52 @@
-import stripe
-from django.conf import settings
+import uuid
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+from django.conf import settings
+from square import Square
+from square.environment import SquareEnvironment
+
+
+def _client():
+    env = (
+        SquareEnvironment.PRODUCTION
+        if settings.SQUARE_ENVIRONMENT == "production"
+        else SquareEnvironment.SANDBOX
+    )
+    return Square(token=settings.SQUARE_ACCESS_TOKEN, environment=env)
 
 
 def create_checkout_session(reservation):
-    """Stripe Checkout Session を作成し、URL を返す。"""
+    """Square Payment Link を作成し、URL を返す。"""
     unit_price = reservation.seat_tier.price_card
-    line_items = [
-        {
-            "price_data": {
-                "currency": "jpy",
-                "unit_amount": unit_price,
-                "product_data": {
-                    "name": (
-                        f"{reservation.performance.event.title} "
-                        f"/ {reservation.performance.label} "
-                        f"/ {reservation.seat_tier.name}"
-                    ),
-                },
-            },
-            "quantity": reservation.quantity,
-        }
-    ]
+    total_amount = unit_price * reservation.quantity
 
-    success_url = (
+    name = (
+        f"{reservation.performance.event.title} "
+        f"/ {reservation.performance.label} "
+        f"/ {reservation.seat_tier.name} x{reservation.quantity}"
+    )
+
+    redirect_url = (
         f"{settings.SITE_URL}/reservation/{reservation.token}"
         "?checkout=success"
     )
-    cancel_url = (
-        f"{settings.SITE_URL}/reservation/{reservation.token}"
-        "?checkout=cancel"
-    )
 
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        line_items=line_items,
-        success_url=success_url,
-        cancel_url=cancel_url,
-        client_reference_id=str(reservation.pk),
-        metadata={
-            "reservation_id": str(reservation.pk),
-            "reservation_token": reservation.token,
+    response = _client().checkout.payment_links.create(
+        idempotency_key=str(uuid.uuid4()),
+        order={
+            "location_id": settings.SQUARE_LOCATION_ID,
+            "reference_id": reservation.token,
+            "line_items": [
+                {
+                    "name": name,
+                    "quantity": "1",
+                    "base_price_money": {
+                        "amount": total_amount,
+                        "currency": "JPY",
+                    },
+                }
+            ],
         },
-        customer_email=reservation.guest_email or None,
+        checkout_options={"redirect_url": redirect_url},
     )
 
-    # session id を予約に保存
-    reservation.stripe_checkout_session_id = session.id
-    reservation.save(update_fields=["stripe_checkout_session_id", "updated_at"])
-
-    return session.url
+    return response.payment_link.url
