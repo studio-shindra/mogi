@@ -1,11 +1,8 @@
-from datetime import timedelta
-
-from django.db.models import Q, Sum
-from django.utils import timezone
+from django.db.models import Sum
 from rest_framework import serializers
 
 from events.models import SeatTier
-from .models import Reservation
+from .models import AccessLink, Reservation
 
 
 class ReservationPerformanceSerializer(serializers.Serializer):
@@ -58,10 +55,15 @@ class ReservationCreateSerializer(serializers.Serializer):
     performance_id = serializers.IntegerField()
     seat_tier_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1, max_value=10)
-    reservation_type = serializers.ChoiceField(choices=["card", "cash", "invite"])
+    reservation_type = serializers.ChoiceField(
+        choices=["cash", "invite"],
+        required=False,
+        default="cash",
+    )
     guest_name = serializers.CharField(max_length=200)
     guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    link_token = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate(self, data):
         from events.models import Performance
@@ -85,16 +87,10 @@ class ReservationCreateSerializer(serializers.Serializer):
                 {"seat_tier_id": "この席種は指定した公演に属していません"}
             )
 
-        # invite は rear のみ
-        if data["reservation_type"] == "invite" and seat_tier.code != "rear":
+        # invite は rear のみ（現行ルール温存）
+        if data.get("reservation_type") == "invite" and seat_tier.code != "rear":
             raise serializers.ValidationError(
                 {"seat_tier_id": "招待は後方席のみ指定できます"}
-            )
-
-        # card はメール必須
-        if data["reservation_type"] == "card" and not data.get("guest_email"):
-            raise serializers.ValidationError(
-                {"guest_email": "カード決済の場合はメールアドレスが必要です"}
             )
 
         # 在庫チェック
@@ -112,30 +108,48 @@ class ReservationCreateSerializer(serializers.Serializer):
                 {"quantity": f"残席が不足しています。{seat_tier.name}: 残り{remaining}枚"}
             )
 
+        # link_token 検証（任意）
+        link = None
+        link_token = (data.get("link_token") or "").strip()
+        if link_token:
+            try:
+                link = AccessLink.objects.get(token=link_token)
+            except AccessLink.DoesNotExist:
+                raise serializers.ValidationError({"link_token": "無効なリンクです"})
+            if not link.is_active:
+                raise serializers.ValidationError({"link_token": "このリンクは無効です"})
+            if link.mode != AccessLink.Mode.RESERVATION:
+                raise serializers.ValidationError({"link_token": "このリンクは予約用ではありません"})
+            if link.performance_id != performance.pk:
+                raise serializers.ValidationError({"link_token": "リンクの公演と一致しません"})
+
         data["_performance"] = performance
         data["_seat_tier"] = seat_tier
+        data["_link"] = link
         return data
 
     def create(self, validated_data):
         performance = validated_data.pop("_performance")
         seat_tier = validated_data.pop("_seat_tier")
-        rtype = validated_data["reservation_type"]
+        link = validated_data.pop("_link", None)
+        rtype = validated_data.get("reservation_type", "cash")
 
-        if rtype == "card":
-            status = Reservation.Status.PENDING
-            payment_status = Reservation.PaymentStatus.UNPAID
-        elif rtype == "cash":
-            status = Reservation.Status.CONFIRMED
-            payment_status = Reservation.PaymentStatus.UNPAID
-        elif rtype == "invite":
+        if rtype == "invite":
             status = Reservation.Status.CONFIRMED
             payment_status = Reservation.PaymentStatus.PAID
+        else:
+            status = Reservation.Status.CONFIRMED
+            payment_status = Reservation.PaymentStatus.UNPAID
+
+        # link があればその sales_channel、なければ general
+        sales_channel = link.sales_channel if link else Reservation.SalesChannel.GENERAL
 
         return Reservation.objects.create(
             performance=performance,
             seat_tier=seat_tier,
             quantity=validated_data["quantity"],
             reservation_type=rtype,
+            sales_channel=sales_channel,
             status=status,
             payment_status=payment_status,
             guest_name=validated_data["guest_name"],
@@ -152,6 +166,7 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
     can_self_checkin = serializers.SerializerMethodField()
     checkin_opens_at = serializers.SerializerMethodField()
     available_seat_tiers = serializers.SerializerMethodField()
+    sales_channel_display = serializers.CharField(source="get_sales_channel_display", read_only=True)
 
     class Meta:
         model = Reservation
@@ -165,6 +180,8 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
             "seat_tier",
             "quantity",
             "reservation_type",
+            "sales_channel",
+            "sales_channel_display",
             "status",
             "payment_status",
             "checked_in",
@@ -175,24 +192,15 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_available_seat_tiers(self, obj):
-        if obj.status != "draft":
-            return None
-        tiers = obj.performance.seat_tiers.order_by("sort_order")
-        return AvailableSeatTierSerializer(tiers, many=True).data
+        # Phase A: draft 完成フロー停止
+        return None
 
     def get_can_self_checkin(self, obj):
-        if obj.checked_in:
-            return False
-        if obj.reservation_type == "cash":
-            return False
-        if obj.status != "confirmed" or obj.payment_status != "paid":
-            return False
-        now = timezone.now()
-        opens_at = obj.performance.starts_at - timedelta(hours=1)
-        return now >= opens_at
+        # Phase A: セルフチェックイン全廃（当日精算前提のため）
+        return False
 
     def get_checkin_opens_at(self, obj):
-        return obj.performance.starts_at - timedelta(hours=1)
+        return None
 
 
 # ---- 受付用一覧 ----
@@ -200,6 +208,7 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
 class StaffReservationSerializer(serializers.ModelSerializer):
     performance = ReservationPerformanceSerializer(read_only=True)
     seat_tier = ReservationSeatTierSerializer(read_only=True)
+    sales_channel_display = serializers.CharField(source="get_sales_channel_display", read_only=True)
 
     class Meta:
         model = Reservation
@@ -213,10 +222,13 @@ class StaffReservationSerializer(serializers.ModelSerializer):
             "seat_tier",
             "quantity",
             "reservation_type",
+            "sales_channel",
+            "sales_channel_display",
             "status",
             "payment_status",
             "checked_in",
             "memo",
+            "is_fanclub_member",
         ]
 
 
@@ -278,6 +290,7 @@ class WalkInCreateSerializer(serializers.Serializer):
             seat_tier=seat_tier,
             quantity=validated_data["quantity"],
             reservation_type=Reservation.ReservationType.CASH,
+            sales_channel=Reservation.SalesChannel.WALK_IN,
             status=Reservation.Status.CONFIRMED,
             payment_status=Reservation.PaymentStatus.PAID,
             guest_name=validated_data["guest_name"],
@@ -289,7 +302,7 @@ class WalkInCreateSerializer(serializers.Serializer):
 # ---- 仮受付 → 予約完成 ----
 
 class CompleteReservationSerializer(serializers.Serializer):
-    """draft 予約を完成させる（席種 + 支払方法を確定）"""
+    """draft 予約を完成させる（Phase A で休眠。将来の席種後選択フロー用に温存）"""
     seat_tier_id = serializers.IntegerField()
     reservation_type = serializers.ChoiceField(choices=["card", "cash"])
     guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
@@ -362,3 +375,107 @@ class CompleteReservationSerializer(serializers.Serializer):
             "payment_status", "guest_email", "updated_at",
         ])
         return reservation
+
+
+# ---- 応募受付（二次先行） ----
+
+class ApplicationCreateSerializer(serializers.Serializer):
+    """公開URL経由の応募フォーム。Reservation を status=applied で作成する。"""
+    performance_id = serializers.IntegerField()
+    seat_tier_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1, max_value=10)
+    guest_name = serializers.CharField(max_length=200)
+    guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    memo = serializers.CharField(required=False, allow_blank=True, default="")
+    link_token = serializers.CharField(required=False, allow_blank=True, default="")
+    is_fanclub_member = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, data):
+        from events.models import Performance
+
+        try:
+            performance = Performance.objects.select_related("event").get(
+                pk=data["performance_id"],
+            )
+        except Performance.DoesNotExist:
+            raise serializers.ValidationError({"performance_id": "公演が見つかりません"})
+
+        try:
+            seat_tier = SeatTier.objects.get(pk=data["seat_tier_id"])
+        except SeatTier.DoesNotExist:
+            raise serializers.ValidationError({"seat_tier_id": "席種が見つかりません"})
+
+        if seat_tier.performance_id != performance.pk:
+            raise serializers.ValidationError(
+                {"seat_tier_id": "この席種は指定した公演に属していません"}
+            )
+
+        # link_token 検証（任意）
+        link = None
+        link_token = (data.get("link_token") or "").strip()
+        if link_token:
+            try:
+                link = AccessLink.objects.get(token=link_token)
+            except AccessLink.DoesNotExist:
+                raise serializers.ValidationError({"link_token": "無効なリンクです"})
+            if not link.is_active:
+                raise serializers.ValidationError({"link_token": "このリンクは無効です"})
+            if link.mode != AccessLink.Mode.APPLICATION:
+                raise serializers.ValidationError({"link_token": "このリンクは応募用ではありません"})
+            if link.performance_id != performance.pk:
+                raise serializers.ValidationError({"link_token": "リンクの公演と一致しません"})
+
+        # 応募は在庫を減らさない（在庫チェック不要、定員超過の応募も許容）
+        data["_performance"] = performance
+        data["_seat_tier"] = seat_tier
+        data["_link"] = link
+        return data
+
+    def create(self, validated_data):
+        performance = validated_data.pop("_performance")
+        seat_tier = validated_data.pop("_seat_tier")
+        link = validated_data.pop("_link", None)
+
+        sales_channel = link.sales_channel if link else Reservation.SalesChannel.ADVANCE
+
+        return Reservation.objects.create(
+            performance=performance,
+            seat_tier=seat_tier,
+            quantity=validated_data["quantity"],
+            reservation_type=Reservation.ReservationType.CASH,
+            sales_channel=sales_channel,
+            status=Reservation.Status.APPLIED,
+            payment_status=Reservation.PaymentStatus.UNPAID,
+            guest_name=validated_data["guest_name"],
+            guest_email=validated_data.get("guest_email", ""),
+            guest_phone=validated_data.get("guest_phone", ""),
+            memo=validated_data.get("memo", ""),
+            is_fanclub_member=validated_data.get("is_fanclub_member", False),
+        )
+
+
+class AccessLinkPublicSerializer(serializers.Serializer):
+    """公開 GET /api/links/<token>/ 用（mode と performance を返す）"""
+    token = serializers.CharField()
+    mode = serializers.CharField()
+    sales_channel = serializers.CharField()
+    label = serializers.CharField()
+    is_active = serializers.BooleanField()
+    performance = serializers.SerializerMethodField()
+
+    def get_performance(self, obj):
+        perf = obj.performance
+        event = perf.event
+        return {
+            "id": perf.id,
+            "label": perf.label,
+            "starts_at": perf.starts_at,
+            "open_at": perf.open_at,
+            "event_slug": event.slug,
+            "event_title": event.title,
+            "venue_name": event.venue_name,
+            "seat_tiers": AvailableSeatTierSerializer(
+                perf.seat_tiers.order_by("sort_order"), many=True
+            ).data,
+        }

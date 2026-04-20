@@ -20,39 +20,55 @@ export async function fetchReservation(token) {
   return data
 }
 
-export async function checkin(token) {
-  if (USE_MOCK) return { checked_in: true, checked_in_at: new Date().toISOString() }
-  const { data } = await client.post(`/reservations/${token}/checkin/`)
-  return data
-}
-
-export async function completeReservation(token, payload) {
-  if (USE_MOCK) {
-    console.log('mock completeReservation', token, payload)
-    return { status: 'pending', reservation_type: payload.reservation_type }
-  }
-  const { data } = await client.post(`/reservations/${token}/complete/`, payload)
-  return data
-}
-
-export async function startCheckout(token) {
-  if (USE_MOCK) {
-    console.log('mock startCheckout', token)
-    return { checkout_url: 'https://checkout.stripe.com/mock' }
-  }
-  const { data } = await client.post(`/reservations/${token}/checkout/`)
-  return data
-}
-
 // ---- Staff ----
 
-export async function staffSearchReservations(performanceId, search) {
+export async function staffSearchReservations(performanceId, search, salesChannel) {
   if (USE_MOCK) return searchMockReservations(performanceId, search)
   const params = {}
   if (performanceId) params.performance = performanceId
   if (search) params.search = search
+  if (salesChannel) params.sales_channel = salesChannel
   const { data } = await client.get('/staff/reservations/', { params })
   return data.results
+}
+
+export async function staffCancel(reservationId) {
+  if (USE_MOCK) return { id: reservationId, status: 'cancelled' }
+  const { data } = await client.post(`/staff/reservations/${reservationId}/cancel/`)
+  return data
+}
+
+// ---- Applications（二次先行応募） ----
+
+export async function createApplication(payload) {
+  if (USE_MOCK) {
+    console.log('mock createApplication', payload)
+    return { id: 998, token: 'mock-app-998' }
+  }
+  const { data } = await client.post('/applications/', payload)
+  return data
+}
+
+export async function staffListApplications(performanceId, search, fanclub) {
+  if (USE_MOCK) return []
+  const params = {}
+  if (performanceId) params.performance = performanceId
+  if (search) params.search = search
+  if (fanclub) params.fanclub = fanclub
+  const { data } = await client.get('/staff/applications/', { params })
+  return data.results
+}
+
+export async function staffConfirmApplication(reservationId) {
+  if (USE_MOCK) return { id: reservationId, status: 'confirmed' }
+  const { data } = await client.post(`/staff/applications/${reservationId}/confirm/`)
+  return data
+}
+
+export async function staffRejectApplication(reservationId) {
+  if (USE_MOCK) return { id: reservationId, status: 'cancelled' }
+  const { data } = await client.post(`/staff/applications/${reservationId}/reject/`)
+  return data
 }
 
 export async function staffMarkPaid(reservationId) {

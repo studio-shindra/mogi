@@ -20,7 +20,7 @@ const badges = computed(() => {
   if (s) list.push(s)
 
   const payMap = {
-    unpaid: { label: '未払い', cls: 'bg-danger' },
+    unpaid: { label: '当日精算', cls: 'bg-warning text-dark' },
     paid: { label: '支払済', cls: 'bg-mogi' },
     refunded: { label: '返金済', cls: 'bg-secondary' },
   }

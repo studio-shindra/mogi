@@ -10,3 +10,4 @@ node_modules/
 venv/
 # Local Netlify folder
 .netlify
+docs/

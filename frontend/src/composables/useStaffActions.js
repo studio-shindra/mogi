@@ -4,13 +4,30 @@ import {
   staffMarkPaid,
   staffCheckIn,
   staffWalkIn,
+  staffCancel,
+  staffListApplications,
+  staffConfirmApplication,
+  staffRejectApplication,
 } from '../api/reservations.js'
 import { fetchEvents, fetchEventDetail } from '../api/events.js'
+
+export const SALES_CHANNELS = [
+  { value: 'advance', label: '先行' },
+  { value: 'general', label: '一般' },
+  { value: 'staff', label: '関係者' },
+  { value: 'invite', label: '招待' },
+  { value: 'hold', label: '取り置き' },
+  { value: 'walk_in', label: '当日券' },
+]
 
 export function useStaffActions() {
   const searchQuery = ref('')
   const selectedPerformanceId = ref(null)
+  const selectedSalesChannel = ref('')
   const reservations = ref([])
+  const applications = ref([])
+  const applicationsLoading = ref(false)
+  const applicationsFanclubFilter = ref('')
   const loading = ref(false)
   const performances = ref([])
   const eventDetail = ref(null)
@@ -43,6 +60,7 @@ export function useStaffActions() {
       reservations.value = await staffSearchReservations(
         selectedPerformanceId.value,
         searchQuery.value,
+        selectedSalesChannel.value,
       )
     } catch (e) {
       console.error('検索失敗:', e)
@@ -54,13 +72,20 @@ export function useStaffActions() {
 
   // --- 集計 ---
   const summary = computed(() => {
-    const list = reservations.value
+    const list = reservations.value.filter((r) => r.status !== 'cancelled')
     const total = list.reduce((s, r) => s + r.quantity, 0)
     const checkedIn = list.filter((r) => r.checked_in).reduce((s, r) => s + r.quantity, 0)
     const unpaid = list
-      .filter((r) => r.payment_status === 'unpaid' && r.status !== 'cancelled')
+      .filter((r) => r.payment_status === 'unpaid')
       .reduce((s, r) => s + r.quantity, 0)
-    return { count: list.length, total, checkedIn, unpaid }
+    const byChannel = {}
+    for (const ch of SALES_CHANNELS) byChannel[ch.value] = 0
+    for (const r of list) {
+      if (r.sales_channel && byChannel[r.sales_channel] !== undefined) {
+        byChannel[r.sales_channel] += r.quantity
+      }
+    }
+    return { count: list.length, total, checkedIn, unpaid, byChannel }
   })
 
   // --- 現金受領 ---
@@ -84,6 +109,57 @@ export function useStaffActions() {
     } catch (e) {
       console.error('入場処理失敗:', e)
       setFlash('error', `入場処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
+    }
+  }
+
+  // --- 応募一覧 ---
+  async function loadApplications() {
+    applicationsLoading.value = true
+    try {
+      applications.value = await staffListApplications(
+        selectedPerformanceId.value,
+        searchQuery.value,
+        applicationsFanclubFilter.value,
+      )
+    } catch (e) {
+      console.error('応募一覧取得失敗:', e)
+      applications.value = []
+    } finally {
+      applicationsLoading.value = false
+    }
+  }
+
+  async function confirmApplication(application) {
+    try {
+      await staffConfirmApplication(application.id)
+      applications.value = applications.value.filter((a) => a.id !== application.id)
+      setFlash('success', `${application.guest_name} さんを当選処理しました`)
+    } catch (e) {
+      console.error('当選処理失敗:', e)
+      setFlash('error', `当選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
+    }
+  }
+
+  async function rejectApplication(application) {
+    try {
+      await staffRejectApplication(application.id)
+      applications.value = applications.value.filter((a) => a.id !== application.id)
+      setFlash('success', `${application.guest_name} さんを落選処理しました`)
+    } catch (e) {
+      console.error('落選処理失敗:', e)
+      setFlash('error', `落選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
+    }
+  }
+
+  // --- キャンセル ---
+  async function cancel(reservation) {
+    try {
+      await staffCancel(reservation.id)
+      reservation.status = 'cancelled'
+      setFlash('success', `${reservation.guest_name} さんの予約をキャンセルしました`)
+    } catch (e) {
+      console.error('キャンセル失敗:', e)
+      setFlash('error', `キャンセルに失敗しました: ${e.response?.data?.detail ?? e.message}`)
     }
   }
 
@@ -111,7 +187,11 @@ export function useStaffActions() {
   return {
     searchQuery,
     selectedPerformanceId,
+    selectedSalesChannel,
     reservations,
+    applications,
+    applicationsLoading,
+    applicationsFanclubFilter,
     loading,
     performances,
     eventDetail,
@@ -119,8 +199,12 @@ export function useStaffActions() {
     summary,
     loadPerformances,
     search,
+    loadApplications,
+    confirmApplication,
+    rejectApplication,
     markPaid,
     checkIn,
+    cancel,
     createWalkIn,
   }
 }

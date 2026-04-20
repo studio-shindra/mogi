@@ -6,17 +6,15 @@ const props = defineProps({
   seatTiers: { type: Array, required: true },
   selectedTier: { type: Object, default: null },
   quantity: { type: Number, default: 1 },
-  reservationType: { type: String, default: 'card' },
 })
 
 const emit = defineEmits([
   'update:selectedTier',
   'update:quantity',
-  'update:reservationType',
 ])
 
 function price(tier) {
-  return props.reservationType === 'cash' ? tier.price_cash : tier.price_card
+  return tier.price_cash
 }
 
 const maxQuantity = computed(() => {
@@ -32,27 +30,9 @@ function tierAvailability(tier) {
 </script>
 
 <template>
-  <!-- 支払い方法 -->
-  <div class="mb-4">
-    <label class="form-label small text-muted">お支払い方法</label>
-    <div class="d-flex gap-2">
-      <button
-        type="button"
-        class="btn flex-fill"
-        :class="reservationType === 'card' ? 'btn-primary' : 'btn-outline-secondary'"
-        @click="emit('update:reservationType', 'card')"
-      >
-        カード決済
-      </button>
-      <button
-        type="button"
-        class="btn flex-fill"
-        :class="reservationType === 'cash' ? 'btn-primary' : 'btn-outline-secondary'"
-        @click="emit('update:reservationType', 'cash')"
-      >
-        当日現金払い
-      </button>
-    </div>
+  <!-- 当日精算の案内 -->
+  <div class="alert bg-mogi-light border-0 small py-2 mb-4">
+    お支払いは当日会場にて現金でお願いいたします。
   </div>
 
   <!-- 席種 -->

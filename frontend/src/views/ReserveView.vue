@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchEventDetail } from '../api/events.js'
-import { createReservation, startCheckout } from '../api/reservations.js'
+import { createReservation } from '../api/reservations.js'
 import { useReservationForm } from '../composables/useReservationForm.js'
 import SeatTierSelector from '../components/event/SeatTierSelector.vue'
 import GuestInfoForm from '../components/reservation/GuestInfoForm.vue'
@@ -47,13 +47,7 @@ async function handleSubmit() {
       guest_phone: form.guestPhone.value,
     })
 
-    if (form.reservationType.value === 'card') {
-      // Stripe Checkout へリダイレクト
-      const { checkout_url } = await startCheckout(result.token)
-      window.location.href = checkout_url
-    } else {
-      router.push({ name: 'reservation-confirm', params: { token: result.token } })
-    }
+    router.push({ name: 'reservation-confirm', params: { token: result.token } })
   } catch (e) {
     const data = e.response?.data
     if (data) {
@@ -117,10 +111,8 @@ async function handleSubmit() {
           :seat-tiers="form.performance.value.seat_tiers"
           :selected-tier="form.selectedTier.value"
           :quantity="form.quantity.value"
-          :reservation-type="form.reservationType.value"
           @update:selected-tier="form.selectTier"
           @update:quantity="(v) => (form.quantity.value = v)"
-          @update:reservation-type="(v) => (form.reservationType.value = v)"
         />
 
         <div v-if="form.selectedTier.value" class="card bg-mogi-light mb-4">
@@ -150,7 +142,7 @@ async function handleSubmit() {
           :guest-name="form.guestName.value"
           :guest-email="form.guestEmail.value"
           :guest-phone="form.guestPhone.value"
-          :email-required="form.reservationType.value === 'card'"
+          :email-required="false"
           @update:guest-name="(v) => (form.guestName.value = v)"
           @update:guest-email="(v) => (form.guestEmail.value = v)"
           @update:guest-phone="(v) => (form.guestPhone.value = v)"
@@ -191,7 +183,7 @@ async function handleSubmit() {
             戻る
           </button>
           <button class="btn btn-primary flex-fill py-3" @click="handleSubmit">
-            {{ form.reservationType.value === 'card' ? '決済へ進む' : '予約を確定する' }}
+            予約を確定する
           </button>
         </div>
       </template>

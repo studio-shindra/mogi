@@ -12,7 +12,7 @@ defineProps({
   guestPhone: { type: String, default: '' },
 })
 
-const typeLabel = { card: 'カード決済', cash: '当日現金払い' }
+const typeLabel = { cash: '当日精算', invite: 'ご招待' }
 </script>
 
 <template>

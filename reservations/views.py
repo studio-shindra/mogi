@@ -1,20 +1,23 @@
-from datetime import timedelta
+import logging
 
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Reservation
+from .models import AccessLink, Reservation
 from .serializers import (
-    CompleteReservationSerializer,
+    AccessLinkPublicSerializer,
+    ApplicationCreateSerializer,
     ReservationCreateSerializer,
     ReservationDetailSerializer,
     StaffReservationSerializer,
     WalkInCreateSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ====================================================================
@@ -53,80 +56,21 @@ def reservation_by_token(request, token):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def reservation_checkin(request, token):
-    """POST /api/reservations/<token>/checkin/ — セルフチェックイン"""
-    try:
-        reservation = Reservation.objects.select_related(
-            "performance",
-        ).get(token=token)
-    except Reservation.DoesNotExist:
-        return Response(
-            {"detail": "予約が見つかりません"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-    # バリデーション
-    if reservation.checked_in:
-        return Response(
-            {"detail": "すでにチェックイン済みです"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    if reservation.reservation_type == "cash":
-        return Response(
-            {"detail": "現金予約はセルフチェックインできません"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    if reservation.status != "confirmed" or reservation.payment_status != "paid":
-        return Response(
-            {"detail": "この予約はチェックインできません"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    opens_at = reservation.performance.starts_at - timedelta(hours=1)
-    now = timezone.now()
-    if now < opens_at:
-        opens_str = timezone.localtime(opens_at).strftime("%H:%M")
-        return Response(
-            {"detail": f"チェックイン可能時間前です（{opens_str} から）"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    reservation.checked_in = True
-    reservation.checked_in_at = now
-    reservation.save(update_fields=["checked_in", "checked_in_at", "updated_at"])
-
-    return Response({
-        "checked_in": True,
-        "checked_in_at": reservation.checked_in_at,
-    })
+    """Phase A: セルフチェックイン廃止。当日受付はスタッフ画面から行う。"""
+    return Response(
+        {"detail": "セルフチェックインは停止しました。当日は会場受付にお声がけください。"},
+        status=status.HTTP_410_GONE,
+    )
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def reservation_complete(request, token):
-    """POST /api/reservations/<token>/complete/ — 仮受付を完成させる"""
-    try:
-        reservation = Reservation.objects.select_related(
-            "performance__event", "seat_tier",
-        ).get(token=token)
-    except Reservation.DoesNotExist:
-        return Response(
-            {"detail": "予約が見つかりません"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-    serializer = CompleteReservationSerializer(
-        data=request.data,
-        context={"reservation": reservation},
+    """Phase A: 決済連動の draft 完成フローを停止。"""
+    return Response(
+        {"detail": "この機能は停止しました。"},
+        status=status.HTTP_410_GONE,
     )
-    serializer.is_valid(raise_exception=True)
-    reservation = serializer.save()
-
-    # 完成後の最新状態を返す
-    reservation.refresh_from_db()
-    reservation = Reservation.objects.select_related(
-        "performance__event", "seat_tier",
-    ).get(pk=reservation.pk)
-    return Response(ReservationDetailSerializer(reservation).data)
 
 
 # ====================================================================
@@ -136,14 +80,18 @@ def reservation_complete(request, token):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def staff_reservation_list(request):
-    """GET /api/staff/reservations/?performance=&search= — 受付検索"""
+    """GET /api/staff/reservations/?performance=&search=&sales_channel= — 受付検索"""
     qs = Reservation.objects.select_related(
         "performance__event", "seat_tier",
-    ).order_by("-created_at")
+    ).exclude(status=Reservation.Status.APPLIED).order_by("-created_at")
 
     performance_id = request.query_params.get("performance")
     if performance_id:
         qs = qs.filter(performance_id=performance_id)
+
+    sales_channel = request.query_params.get("sales_channel", "").strip()
+    if sales_channel:
+        qs = qs.filter(sales_channel=sales_channel)
 
     search = request.query_params.get("search", "").strip()
     if search:
@@ -226,43 +174,221 @@ def staff_walk_in(request):
 
 
 # ====================================================================
-# Stripe Checkout (token ベース)
+# AccessLink API（限定URL）
+# ====================================================================
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def link_detail(request, token):
+    """GET /api/links/<token>/ — 限定URL の公開情報を返す"""
+    try:
+        link = AccessLink.objects.select_related("performance__event").get(token=token)
+    except AccessLink.DoesNotExist:
+        return Response(
+            {"detail": "リンクが見つかりません"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    if not link.is_active:
+        return Response(
+            {"detail": "このリンクは無効です"},
+            status=status.HTTP_410_GONE,
+        )
+    return Response(AccessLinkPublicSerializer(link).data)
+
+
+# ====================================================================
+# Application API（二次先行応募）
 # ====================================================================
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
-def reservation_checkout(request, token):
-    """POST /api/reservations/<token>/checkout/ — Stripe Checkout Session 作成"""
+def application_create(request):
+    """POST /api/applications/ — 応募受付（在庫は消費しない）"""
+    serializer = ApplicationCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    reservation = serializer.save()
+
+    if reservation.guest_email:
+        try:
+            from .emails import send_application_received_email
+            send_application_received_email(reservation)
+        except Exception:
+            logger.exception("応募受付メール送信失敗: reservation=%s", reservation.pk)
+
+    return Response(
+        ReservationDetailSerializer(reservation).data,
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def staff_application_list(request):
+    """GET /api/staff/applications/ — 応募一覧（status=applied のみ）"""
+    qs = Reservation.objects.select_related(
+        "performance__event", "seat_tier",
+    ).filter(status=Reservation.Status.APPLIED).order_by("-created_at")
+
+    performance_id = request.query_params.get("performance")
+    if performance_id:
+        qs = qs.filter(performance_id=performance_id)
+
+    fanclub = request.query_params.get("fanclub", "").strip().lower()
+    if fanclub in ("true", "1", "yes"):
+        qs = qs.filter(is_fanclub_member=True)
+    elif fanclub in ("false", "0", "no"):
+        qs = qs.filter(is_fanclub_member=False)
+
+    search = request.query_params.get("search", "").strip()
+    if search:
+        qs = qs.filter(
+            Q(guest_name__icontains=search)
+            | Q(guest_email__icontains=search)
+            | Q(guest_phone__icontains=search)
+            | Q(token__icontains=search)
+        )
+
+    serializer = StaffReservationSerializer(qs[:500], many=True)
+    return Response({"count": len(serializer.data), "results": serializer.data})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def staff_application_confirm(request, pk):
+    """POST /api/staff/applications/<id>/confirm/ — 応募を当選 → 予約確定へ"""
     try:
-        reservation = Reservation.objects.select_related(
-            "performance__event", "seat_tier",
-        ).get(token=token)
+        reservation = Reservation.objects.select_related("seat_tier").get(pk=pk)
+    except Reservation.DoesNotExist:
+        return Response(
+            {"detail": "応募が見つかりません"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if reservation.status != Reservation.Status.APPLIED:
+        return Response(
+            {"detail": "応募ステータスではありません"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # 在庫チェック（当選時点で初めて消費）
+    seat_tier = reservation.seat_tier
+    if seat_tier is None:
+        return Response(
+            {"detail": "席種が未設定です"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    confirmed_qty = (
+        Reservation.objects.filter(
+            seat_tier=seat_tier,
+            status__in=[Reservation.Status.PENDING, Reservation.Status.CONFIRMED],
+        )
+        .aggregate(total=Sum("quantity"))["total"]
+        or 0
+    )
+    remaining = seat_tier.capacity - confirmed_qty
+    if reservation.quantity > remaining:
+        return Response(
+            {"detail": f"残席不足。{seat_tier.name}: 残り{remaining}枚"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = timezone.now()
+    stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
+    confirm_note = f"[system] application confirmed {stamp}"
+    reservation.memo = (
+        f"{reservation.memo}\n{confirm_note}".strip()
+        if reservation.memo
+        else confirm_note
+    )
+    reservation.status = Reservation.Status.CONFIRMED
+    reservation.save(update_fields=["status", "memo", "updated_at"])
+
+    return Response({
+        "id": reservation.pk,
+        "status": "confirmed",
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def staff_application_reject(request, pk):
+    """POST /api/staff/applications/<id>/reject/ — 応募を落選へ"""
+    try:
+        reservation = Reservation.objects.get(pk=pk)
+    except Reservation.DoesNotExist:
+        return Response(
+            {"detail": "応募が見つかりません"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if reservation.status != Reservation.Status.APPLIED:
+        return Response(
+            {"detail": "応募ステータスではありません"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = timezone.now()
+    stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
+    reject_note = f"[system] application rejected {stamp}"
+    reservation.memo = (
+        f"{reservation.memo}\n{reject_note}".strip()
+        if reservation.memo
+        else reject_note
+    )
+    reservation.status = Reservation.Status.CANCELLED
+    reservation.save(update_fields=["status", "memo", "updated_at"])
+
+    return Response({
+        "id": reservation.pk,
+        "status": "cancelled",
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def staff_cancel(request, pk):
+    """POST /api/staff/reservations/<id>/cancel/ — 予約キャンセル（在庫復帰）"""
+    try:
+        reservation = Reservation.objects.get(pk=pk)
     except Reservation.DoesNotExist:
         return Response(
             {"detail": "予約が見つかりません"},
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    if reservation.reservation_type != "card":
+    if reservation.status == Reservation.Status.CANCELLED:
         return Response(
-            {"detail": "この予約は Stripe 対象ではありません"},
+            {"detail": "すでにキャンセル済みです"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if reservation.status != "pending":
-        return Response(
-            {"detail": "この予約はすでに処理済みです"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    now = timezone.now()
+    stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
+    cancel_note = f"[system] staff cancelled {stamp}"
+    reservation.memo = (
+        f"{reservation.memo}\n{cancel_note}".strip()
+        if reservation.memo
+        else cancel_note
+    )
+    reservation.status = Reservation.Status.CANCELLED
+    reservation.save(update_fields=["status", "memo", "updated_at"])
 
-    from payments.services import create_checkout_session
+    return Response({
+        "id": reservation.pk,
+        "status": "cancelled",
+    })
 
-    try:
-        checkout_url = create_checkout_session(reservation)
-    except Exception as e:
-        return Response(
-            {"detail": f"Stripe エラー: {str(e)}"},
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
 
-    return Response({"checkout_url": checkout_url})
+# ====================================================================
+# Stripe Checkout (token ベース)
+# ====================================================================
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reservation_checkout(request, token):
+    """Phase A: オンライン事前決済を停止。当日会場にて現金精算。"""
+    return Response(
+        {"detail": "オンライン事前決済は停止しました。当日会場にてお支払いください。"},
+        status=status.HTTP_410_GONE,
+    )

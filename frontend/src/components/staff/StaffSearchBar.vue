@@ -1,13 +1,17 @@
 <script setup>
+import { SALES_CHANNELS } from '../../composables/useStaffActions.js'
+
 defineProps({
   searchQuery: { type: String, default: '' },
   selectedPerformanceId: { type: Number, default: null },
+  selectedSalesChannel: { type: String, default: '' },
   performances: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits([
   'update:searchQuery',
   'update:selectedPerformanceId',
+  'update:selectedSalesChannel',
   'search',
 ])
 
@@ -19,7 +23,7 @@ function handleSubmit() {
 <template>
   <form @submit.prevent="handleSubmit" class="row g-2 mb-3">
     <!-- 公演フィルタ -->
-    <div class="col-12 col-md-4">
+    <div class="col-6 col-md-3">
       <select
         class="form-select"
         :value="selectedPerformanceId"
@@ -28,6 +32,19 @@ function handleSubmit() {
         <option :value="null">全公演</option>
         <option v-for="p in performances" :key="p.id" :value="p.id">
           {{ p.label }}
+        </option>
+      </select>
+    </div>
+    <!-- 販売区分フィルタ -->
+    <div class="col-6 col-md-2">
+      <select
+        class="form-select"
+        :value="selectedSalesChannel"
+        @change="emit('update:selectedSalesChannel', $event.target.value)"
+      >
+        <option value="">全区分</option>
+        <option v-for="ch in SALES_CHANNELS" :key="ch.value" :value="ch.value">
+          {{ ch.label }}
         </option>
       </select>
     </div>

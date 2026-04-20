@@ -3,7 +3,7 @@ from django.core.mail import send_mail
 
 
 def send_reservation_email(reservation):
-    """予約登録後にゲストへ通知メールを送信する。"""
+    """予約登録後にゲストへ通知メールを送信する（Phase A: 当日精算前提）。"""
     if not reservation.guest_email:
         return
 
@@ -11,67 +11,58 @@ def send_reservation_email(reservation):
         f"{settings.FRONTEND_URL}/reservation/{reservation.token}"
     )
     performance = reservation.performance
+    event = performance.event
     seat_tier = reservation.seat_tier
 
-    is_draft = reservation.status == "draft"
+    subject = f"【{event.title}】ご予約ありがとうございます"
 
-    if is_draft:
-        subject = f"【{performance.event.title}】ご予約のお手続きをお願いします"
-    else:
-        subject = f"【{performance.event.title}】ご予約ありがとうございます"
-
-    # --- 本文組み立て ---
     lines = [
         f"{reservation.guest_name} 様",
         "",
+        "ご予約ありがとうございます。",
+        "以下の内容でご予約を承りました。",
+        "",
+        f"作品: {event.title}",
+        f"公演: {performance.label}",
+        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
+        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+    ]
+    if event.venue_name:
+        lines.append(f"会場: {event.venue_name}")
+    lines += [
+        f"席種: {seat_tier.name if seat_tier else '未選択'}",
+        f"枚数: {reservation.quantity}枚",
     ]
 
-    if is_draft:
+    if reservation.reservation_type == "invite":
         lines += [
-            "ご予約を仮受付いたしました。",
-            "下記URLより席種・お支払い方法を選択して予約を完成させてください。",
             "",
-            f"公演: {performance}",
-            f"枚数: {reservation.quantity}枚",
-            "",
-            reservation_url,
+            "ご招待でのご予約です。当日は受付にてお名前をお伝えください。",
         ]
     else:
         lines += [
-            "ご予約ありがとうございます。",
-            "以下の内容でご予約を承りました。",
             "",
-            f"公演: {performance}",
-            f"席種: {seat_tier.name if seat_tier else '未選択'}",
-            f"枚数: {reservation.quantity}枚",
+            "お支払いは当日会場にて現金でお願いいたします。",
+            "ご来場の際は受付にてお名前をお伝えください。",
         ]
 
-        # 決済案内
-        if reservation.reservation_type == "card" and reservation.payment_status == "unpaid":
-            lines += [
-                "",
-                "下記URLより事前決済をお願いいたします。",
-                reservation_url,
-            ]
-        elif reservation.reservation_type == "invite":
-            lines += [
-                "",
-                "ご招待でのご予約です。",
-                "",
-                "予約詳細は下記URLよりご確認いただけます。",
-                reservation_url,
-            ]
-        else:
-            lines += [
-                "",
-                "予約詳細は下記URLよりご確認いただけます。",
-                reservation_url,
-            ]
+    lines += [
+        "",
+        "予約詳細は下記URLよりご確認いただけます。",
+        reservation_url,
+    ]
+
+    if event.organizer_email:
+        lines += [
+            "",
+            "ご予約のキャンセル・変更は下記までご連絡ください。",
+            event.organizer_email,
+        ]
 
     lines += [
         "",
         "---",
-        performance.event.organizer_name or "",
+        event.organizer_name or "",
     ]
 
     body = "\n".join(lines)
@@ -79,6 +70,39 @@ def send_reservation_email(reservation):
     send_mail(
         subject=subject,
         message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[reservation.guest_email],
+    )
+
+
+def send_application_received_email(reservation):
+    """応募受付メール（最小文面）。"""
+    if not reservation.guest_email:
+        return
+
+    event = reservation.performance.event
+    subject = f"【{event.title}】応募を受け付けました"
+    lines = [
+        f"{reservation.guest_name} 様",
+        "",
+        "応募を受け付けました。",
+        "結果は後日ご案内します。",
+        "",
+        f"作品: {event.title}",
+        f"公演: {reservation.performance.label}",
+    ]
+    if reservation.seat_tier:
+        lines.append(f"席種: {reservation.seat_tier.name}")
+    lines.append(f"枚数: {reservation.quantity}枚")
+    lines += [
+        "",
+        "---",
+        event.organizer_name or "",
+    ]
+
+    send_mail(
+        subject=subject,
+        message="\n".join(lines),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[reservation.guest_email],
     )

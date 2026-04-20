@@ -6,7 +6,8 @@ export function useReservationForm() {
   const performance = ref(null)
   const selectedTier = ref(null)
   const quantity = ref(1)
-  const reservationType = ref('card')
+  // Phase A: 支払方法は当日精算のみ。内部的に cash 固定
+  const reservationType = ref('cash')
   const guestName = ref('')
   const guestEmail = ref('')
   const guestPhone = ref('')
@@ -14,9 +15,7 @@ export function useReservationForm() {
   // --- computed ---
   const unitPrice = computed(() => {
     if (!selectedTier.value) return 0
-    return reservationType.value === 'cash'
-      ? selectedTier.value.price_cash
-      : selectedTier.value.price_card
+    return selectedTier.value.price_cash
   })
 
   const totalPrice = computed(() => unitPrice.value * quantity.value)
@@ -32,7 +31,6 @@ export function useReservationForm() {
   const canProceedStep2 = computed(() => {
     if (!guestName.value.trim()) return false
     if (!guestPhone.value.trim()) return false
-    if (reservationType.value === 'card' && !guestEmail.value.trim()) return false
     return true
   })
 
@@ -63,7 +61,7 @@ export function useReservationForm() {
     step.value = 1
     selectedTier.value = null
     quantity.value = 1
-    reservationType.value = 'card'
+    reservationType.value = 'cash'
     guestName.value = ''
     guestEmail.value = ''
     guestPhone.value = ''

@@ -49,8 +49,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--type",
             choices=["card", "cash", "invite"],
-            default="card",
-            help="予約種別（デフォルト: card）",
+            default="cash",
+            help="予約種別（デフォルト: cash）",
+        )
+        parser.add_argument(
+            "--channel",
+            choices=["advance", "general", "staff", "invite", "hold", "walk_in"],
+            default="advance",
+            help="販売区分（デフォルト: advance）",
         )
         parser.add_argument(
             "--tier",
@@ -64,6 +70,7 @@ class Command(BaseCommand):
         csv_path = options["csv_path"]
         dry_run = options["dry_run"]
         default_type = options["type"]
+        default_channel = options["channel"]
         default_tier = options["tier"]
 
         # Performance 取得
@@ -169,6 +176,7 @@ class Command(BaseCommand):
                     guest_email=guest_email,
                     guest_phone=guest_phone,
                     reservation_type=reservation_type,
+                    sales_channel=default_channel,
                     status=status,
                     payment_status=payment_status,
                     pre_sale_type=pre_sale_type,

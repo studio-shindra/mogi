@@ -1,3 +1,4 @@
+import secrets
 import uuid
 
 from django.db import models
@@ -5,6 +6,10 @@ from django.db import models
 
 def _generate_token():
     return uuid.uuid4().hex
+
+
+def _generate_link_token():
+    return secrets.token_hex(16)
 
 
 class Reservation(models.Model):
@@ -17,6 +22,7 @@ class Reservation(models.Model):
     class Status(models.TextChoices):
         DRAFT = "draft", "仮受付"
         PENDING = "pending", "仮予約"
+        APPLIED = "applied", "応募"
         CONFIRMED = "confirmed", "確定"
         CANCELLED = "cancelled", "キャンセル"
 
@@ -24,6 +30,14 @@ class Reservation(models.Model):
         UNPAID = "unpaid", "未払い"
         PAID = "paid", "支払い済み"
         REFUNDED = "refunded", "返金済み"
+
+    class SalesChannel(models.TextChoices):
+        ADVANCE = "advance", "先行"
+        GENERAL = "general", "一般"
+        STAFF = "staff", "関係者"
+        INVITE = "invite", "招待"
+        HOLD = "hold", "取り置き"
+        WALK_IN = "walk_in", "当日券"
 
     # --- リレーション ---
     performance = models.ForeignKey(
@@ -90,9 +104,20 @@ class Reservation(models.Model):
         blank=True,
     )
 
+    # --- 販売区分 ---
+    sales_channel = models.CharField(
+        "販売区分",
+        max_length=10,
+        choices=SalesChannel.choices,
+        default=SalesChannel.GENERAL,
+    )
+
     # --- 先行受付・メモ ---
     pre_sale_type = models.CharField("先行種別", max_length=50, blank=True)
     memo = models.TextField("メモ", blank=True)
+
+    # --- 応募時の付帯情報 ---
+    is_fanclub_member = models.BooleanField("FC会員", default=False)
 
     # --- タイムスタンプ ---
     created_at = models.DateTimeField(auto_now_add=True)
@@ -105,3 +130,47 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f"{self.guest_name} / {self.performance} ({self.get_reservation_type_display()})"
+
+
+class AccessLink(models.Model):
+    """限定URL: 公演への入口を token で 1本発行し、mode/販売区分を backend が決める。"""
+
+    class Mode(models.TextChoices):
+        RESERVATION = "reservation", "予約"
+        APPLICATION = "application", "応募"
+
+    token = models.CharField(
+        "トークン",
+        max_length=32,
+        unique=True,
+        default=_generate_link_token,
+    )
+    performance = models.ForeignKey(
+        "events.Performance",
+        on_delete=models.CASCADE,
+        related_name="access_links",
+        verbose_name="公演",
+    )
+    mode = models.CharField(
+        "モード",
+        max_length=12,
+        choices=Mode.choices,
+    )
+    sales_channel = models.CharField(
+        "販売区分",
+        max_length=10,
+        choices=Reservation.SalesChannel.choices,
+        default=Reservation.SalesChannel.ADVANCE,
+    )
+    label = models.CharField("ラベル", max_length=100)
+    is_active = models.BooleanField("有効", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "限定URL"
+        verbose_name_plural = "限定URL"
+
+    def __str__(self):
+        return f"{self.label} ({self.get_mode_display()})"

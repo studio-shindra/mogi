@@ -27,8 +27,10 @@ const routes = [
   {
     path: '/reservation/:token/checkin',
     name: 'checkin',
-    component: () => import('../views/CheckinView.vue'),
-    props: true,
+    redirect: (to) => ({
+      name: 'reservation-confirm',
+      params: { token: to.params.token },
+    }),
   },
   {
     path: '/:slug',
@@ -40,6 +42,18 @@ const routes = [
     path: '/:slug/reserve/:performanceId',
     name: 'reserve',
     component: () => import('../views/ReserveView.vue'),
+    props: true,
+  },
+  {
+    path: '/apply/:slug/:performanceId',
+    name: 'apply',
+    component: () => import('../views/ApplyView.vue'),
+    props: true,
+  },
+  {
+    path: '/r/:token',
+    name: 'link-entry',
+    component: () => import('../views/LinkEntryView.vue'),
     props: true,
   },
   {
