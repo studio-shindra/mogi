@@ -117,6 +117,13 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv(),
 )
 
+# --- Session / CSRF Cookie (本番 HTTPS 用) ---------------------------
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
 # --- Stripe ----------------------------------------------------------
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
