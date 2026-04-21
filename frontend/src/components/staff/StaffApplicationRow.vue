@@ -41,8 +41,18 @@ async function onReject() {
       <small v-if="application.guest_email" class="text-muted d-block">{{ application.guest_email }}</small>
     </td>
     <td>
-      {{ application.seat_tier?.name }}
-      <span class="text-muted">× {{ application.quantity }}</span>
+      <div>
+        <span class="text-muted small">第一希望:</span>
+        <span class="fw-bold ms-1">{{ application.first_choice_seat_tier?.name || '—' }}</span>
+        <span class="text-muted ms-1">× {{ application.quantity }}</span>
+      </div>
+      <div>
+        <span class="text-muted small">第二希望:</span>
+        <span class="ms-1">{{ application.second_choice_seat_tier?.name || '—' }}</span>
+      </div>
+      <div v-if="application.allow_any_seat">
+        <span class="badge bg-mogi-light text-mogi border">席不問 可</span>
+      </div>
     </td>
     <td>
       <small class="text-muted">{{ application.performance?.label }}</small>

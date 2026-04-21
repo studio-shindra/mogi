@@ -20,12 +20,20 @@ class ReservationAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Phase A: 席種未指定の予約は在庫事故の原因になるため必須化
-        if "seat_tier" in self.fields:
-            self.fields["seat_tier"].required = True
+        # seat_tier は確定席専用。応募（status=applied）は None で保存されるため
+        # init では必須化しない（clean() で応募以外のみ必須化する）。
         # Phase B1: 販売区分は必須
         if "sales_channel" in self.fields:
             self.fields["sales_channel"].required = True
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get("status")
+        seat_tier = cleaned.get("seat_tier")
+        # 応募以外は確定席（seat_tier）必須。応募は希望席で持つ。
+        if status and status != Reservation.Status.APPLIED and not seat_tier:
+            self.add_error("seat_tier", "応募以外は確定席を指定してください")
+        return cleaned
 
 
 @admin.register(Reservation)
@@ -35,6 +43,8 @@ class ReservationAdmin(admin.ModelAdmin):
         "guest_name_nowrap",
         "performance",
         "seat_tier",
+        "first_choice_short",
+        "allow_any_seat_display",
         "quantity",
         "sales_channel",
         "reservation_type",
@@ -50,6 +60,15 @@ class ReservationAdmin(admin.ModelAdmin):
         return format_html(
             '<span style="white-space:nowrap;">{}</span>', obj.guest_name,
         )
+
+    @admin.display(description="第一希望", ordering="first_choice_seat_tier")
+    def first_choice_short(self, obj):
+        t = obj.first_choice_seat_tier
+        return t.name if t else "—"
+
+    @admin.display(description="席不問", boolean=True)
+    def allow_any_seat_display(self, obj):
+        return obj.allow_any_seat
     list_filter = (
         "performance__event",
         "performance",
@@ -59,10 +78,41 @@ class ReservationAdmin(admin.ModelAdmin):
         "payment_status",
         "checked_in",
         "is_fanclub_member",
+        "allow_any_seat",
     )
     search_fields = ("guest_name", "guest_email", "guest_phone", "token")
     readonly_fields = ("token", "created_at", "updated_at")
     actions = ("confirm_applications", "reject_applications")
+    fieldsets = (
+        ("公演・確定席", {
+            "fields": ("performance", "seat_tier", "quantity"),
+            "description": "seat_tier は確定席です。応募段階では希望席を下のセクションに入力してください。",
+        }),
+        ("応募の希望席", {
+            "fields": ("first_choice_seat_tier", "second_choice_seat_tier", "allow_any_seat"),
+            "description": "応募（status=applied）でのみ使用します。確定時は seat_tier を設定してください。",
+        }),
+        ("ゲスト情報", {
+            "fields": ("guest_name", "guest_email", "guest_phone"),
+        }),
+        ("区分・ステータス", {
+            "fields": (
+                "reservation_type", "sales_channel", "pre_sale_type",
+                "status", "payment_status", "is_fanclub_member",
+            ),
+        }),
+        ("チェックイン", {
+            "fields": ("checked_in", "checked_in_at"),
+            "classes": ("collapse",),
+        }),
+        ("メモ", {
+            "fields": ("memo",),
+        }),
+        ("システム", {
+            "fields": ("token", "stripe_checkout_session_id", "created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
 
     class Media:
         js = ("reservations/js/filter_seat_tier.js",)

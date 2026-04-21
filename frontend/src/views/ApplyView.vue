@@ -120,6 +120,16 @@ async function handleSubmit() {
         当選後、会場にて現金でお支払いいただきます。
       </div>
 
+      <!-- 座席参考表 -->
+      <div class="mb-3">
+        <label class="form-label small text-muted">座席参考表</label>
+        <img
+          src="/sheet-0421.png"
+          alt="新生館スタジオ 座席参考表"
+          class="w-100 rounded border"
+        />
+      </div>
+
       <!-- 第一希望席 -->
       <div class="mb-3">
         <label class="form-label small text-muted">第一希望席 <span class="text-danger">*</span></label>

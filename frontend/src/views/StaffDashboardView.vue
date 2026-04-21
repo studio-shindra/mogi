@@ -247,7 +247,7 @@ async function handleWalkIn(data) {
           <thead class="table-light">
             <tr>
               <th>応募者</th>
-              <th>席種</th>
+              <th>希望席</th>
               <th>公演</th>
               <th>備考</th>
               <th class="text-end">操作</th>

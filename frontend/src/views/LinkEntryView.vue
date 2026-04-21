@@ -314,6 +314,16 @@ async function handleSubmit() {
         お支払いは当日会場にて現金でお願いいたします。
       </div>
 
+      <!-- 座席参考表 -->
+      <div class="mb-3">
+        <label class="form-label small text-muted">座席参考表</label>
+        <img
+          src="/sheet-0421.png"
+          alt="新生館スタジオ 座席参考表"
+          class="w-100 rounded border"
+        />
+      </div>
+
       <!-- 席種（予約モード） -->
       <div v-if="isReservation" class="mb-3">
         <label class="form-label small text-muted">

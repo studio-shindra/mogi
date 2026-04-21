@@ -364,9 +364,15 @@ def staff_application_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def staff_application_confirm(request, pk):
-    """POST /api/staff/applications/<id>/confirm/ — 応募を当選 → 予約確定へ"""
+    """POST /api/staff/applications/<id>/confirm/ — 応募を当選 → 予約確定へ
+
+    body: { "assigned_seat_tier_id": <int> }
+    確定席は運営が割り当てる。応募時の希望席との一致は問わない。
+    """
+    from events.models import SeatTier
+
     try:
-        reservation = Reservation.objects.select_related("seat_tier").get(pk=pk)
+        reservation = Reservation.objects.select_related("performance__event").get(pk=pk)
     except Reservation.DoesNotExist:
         return Response(
             {"detail": "応募が見つかりません"},
@@ -379,14 +385,28 @@ def staff_application_confirm(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # 在庫チェック（当選時点で初めて消費）
-    seat_tier = reservation.seat_tier
-    if seat_tier is None:
+    assigned_id = request.data.get("assigned_seat_tier_id")
+    if not assigned_id:
         return Response(
-            {"detail": "席種が未設定です"},
+            {"detail": "確定席（assigned_seat_tier_id）を指定してください"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    try:
+        seat_tier = SeatTier.objects.get(pk=assigned_id)
+    except (SeatTier.DoesNotExist, ValueError, TypeError):
+        return Response(
+            {"detail": "指定された席種が見つかりません"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if seat_tier.performance_id != reservation.performance_id:
+        return Response(
+            {"detail": "この席種はこの公演に属していません"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # 在庫チェック（当選時点で初めて消費）
     confirmed_qty = (
         Reservation.objects.filter(
             seat_tier=seat_tier,
@@ -404,18 +424,30 @@ def staff_application_confirm(request, pk):
 
     now = timezone.now()
     stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
-    confirm_note = f"[system] application confirmed {stamp}"
+    confirm_note = f"[system] application confirmed {stamp} → {seat_tier.name}"
+    reservation.seat_tier = seat_tier
     reservation.memo = (
         f"{reservation.memo}\n{confirm_note}".strip()
         if reservation.memo
         else confirm_note
     )
     reservation.status = Reservation.Status.CONFIRMED
-    reservation.save(update_fields=["status", "memo", "updated_at"])
+    reservation.save(update_fields=["seat_tier", "status", "memo", "updated_at"])
+
+    email_sent = False
+    if reservation.guest_email:
+        try:
+            from .emails import send_application_won_email
+            send_application_won_email(reservation)
+            email_sent = True
+        except Exception:
+            logger.exception("当選メール送信失敗: reservation=%s", reservation.pk)
 
     return Response({
         "id": reservation.pk,
         "status": "confirmed",
+        "seat_tier_id": seat_tier.pk,
+        "email_sent": email_sent,
     })
 
 

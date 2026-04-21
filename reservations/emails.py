@@ -108,6 +108,66 @@ def send_application_received_email(reservation):
     )
 
 
+def send_application_won_email(reservation):
+    """応募当選メール（運営が確定席を割り当てて確定した際に送る）。"""
+    if not reservation.guest_email:
+        return
+
+    performance = reservation.performance
+    event = performance.event
+    seat_tier = reservation.seat_tier
+
+    reservation_url = (
+        f"{settings.FRONTEND_URL}/reservation/{reservation.token}"
+    )
+
+    subject = f"【{event.title}】ご応募結果のご案内（当選）"
+
+    lines = [
+        f"{reservation.guest_name} 様",
+        "",
+        "この度はご応募いただきありがとうございます。",
+        "ご応募の結果、当選となりましたのでご案内いたします。",
+        "",
+        f"作品: {event.title}",
+        f"公演: {performance.label}",
+        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
+        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+    ]
+    if event.venue_name:
+        lines.append(f"会場: {event.venue_name}")
+    lines += [
+        f"確定席種: {seat_tier.name if seat_tier else '未設定'}",
+        f"枚数: {reservation.quantity}枚",
+        "",
+        "お支払いは当日会場にて現金でお願いいたします。",
+        "ご来場の際は受付にてお名前をお伝えください。",
+        "",
+        "予約詳細は下記URLよりご確認いただけます。",
+        reservation_url,
+    ]
+
+    if event.organizer_email:
+        lines += [
+            "",
+            "ご予約のキャンセル・変更は下記までご連絡ください。",
+            event.organizer_email,
+        ]
+
+    lines += [
+        "",
+        "---",
+        event.organizer_name or "",
+    ]
+
+    send_mail(
+        subject=subject,
+        message="\n".join(lines),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[reservation.guest_email],
+    )
+
+
 def send_payment_complete_email(reservation):
     """決済完了時にゲストへ確認メールを送信する。"""
     if not reservation.guest_email:
