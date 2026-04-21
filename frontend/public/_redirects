@@ -1,3 +1,6 @@
+# API は Heroku へプロキシ（同一オリジン化のため Netlify 経由で中継）
+/api/*  https://mogi-app-11259607193e.herokuapp.com/api/:splat  200
+
 # SNS クローラーだけ Heroku にプロキシして OGP 付き HTML を返す
 /r/*  https://mogi-app-11259607193e.herokuapp.com/r/:splat  200  User-Agent=facebookexternalhit,Facebot,Twitterbot,LINE,Slackbot,LinkedInBot,Discordbot,Googlebot,bingbot,WhatsApp,TelegramBot,Applebot,SkypeUriPreview
 
