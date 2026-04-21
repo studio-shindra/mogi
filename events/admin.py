@@ -1,6 +1,24 @@
 from django.contrib import admin
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 
 from .models import Event, Performance, SeatTier
+
+
+class SeatTierResource(resources.ModelResource):
+    class Meta:
+        model = SeatTier
+        fields = (
+            "id",
+            "performance",
+            "code",
+            "name",
+            "capacity",
+            "price_card",
+            "price_cash",
+            "sort_order",
+        )
+        import_id_fields = ("id",)
 
 
 class PerformanceInline(admin.TabularInline):
@@ -37,6 +55,7 @@ class PerformanceAdmin(admin.ModelAdmin):
 
 
 @admin.register(SeatTier)
-class SeatTierAdmin(admin.ModelAdmin):
+class SeatTierAdmin(ImportExportModelAdmin):
+    resource_classes = [SeatTierResource]
     list_display = ("performance", "code", "name", "capacity", "price_card", "price_cash")
     list_filter = ("performance__event", "code")

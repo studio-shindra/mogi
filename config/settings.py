@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     # 3rd party
     "rest_framework",
     "corsheaders",
+    "import_export",
     # local
     "events",
     "reservations",
