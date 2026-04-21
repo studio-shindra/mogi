@@ -90,10 +90,10 @@ class ReservationCreateSerializer(serializers.Serializer):
                 {"seat_tier_id": "この席種は指定した公演に属していません"}
             )
 
-        # invite は rear のみ（現行ルール温存）
-        if data.get("reservation_type") == "invite" and seat_tier.code != "rear":
+        # invite は D列ベンチシートのみ（現行ルール温存）
+        if data.get("reservation_type") == "invite" and seat_tier.code != "row_d_bench":
             raise serializers.ValidationError(
-                {"seat_tier_id": "招待は後方席のみ指定できます"}
+                {"seat_tier_id": "招待はD列ベンチシートのみ指定できます"}
             )
 
         # 在庫チェック
@@ -210,7 +210,9 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
 
 class StaffReservationSerializer(serializers.ModelSerializer):
     performance = ReservationPerformanceSerializer(read_only=True)
-    seat_tier = ReservationSeatTierSerializer(read_only=True)
+    seat_tier = ReservationSeatTierSerializer(read_only=True, allow_null=True)
+    first_choice_seat_tier = ReservationSeatTierSerializer(read_only=True, allow_null=True)
+    second_choice_seat_tier = ReservationSeatTierSerializer(read_only=True, allow_null=True)
     sales_channel_display = serializers.CharField(source="get_sales_channel_display", read_only=True)
 
     class Meta:
@@ -223,6 +225,9 @@ class StaffReservationSerializer(serializers.ModelSerializer):
             "guest_phone",
             "performance",
             "seat_tier",
+            "first_choice_seat_tier",
+            "second_choice_seat_tier",
+            "allow_any_seat",
             "quantity",
             "reservation_type",
             "sales_channel",

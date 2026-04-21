@@ -37,8 +37,8 @@ def _make_fixture():
     )
     tier = SeatTier.objects.create(
         performance=perf,
-        code=SeatTier.TierCode.CENTER,
-        name="中央席",
+        code=SeatTier.TierCode.ROW_C,
+        name="C列",
         capacity=10,
         price_card=3000,
         price_cash=3000,
@@ -162,8 +162,8 @@ class ReservationWithLinkTests(APITestCase):
         )
         other_tier = SeatTier.objects.create(
             performance=other_perf,
-            code=SeatTier.TierCode.CENTER,
-            name="中央席",
+            code=SeatTier.TierCode.ROW_C,
+            name="C列",
             capacity=10,
             price_card=3000,
             price_cash=3000,
@@ -187,8 +187,8 @@ class ReservationWithLinkTests(APITestCase):
         )
         other_tier = SeatTier.objects.create(
             performance=other_perf,
-            code=SeatTier.TierCode.CENTER,
-            name="中央席",
+            code=SeatTier.TierCode.ROW_C,
+            name="C列",
             capacity=10,
             price_card=3000,
             price_cash=3000,
@@ -215,7 +215,7 @@ class ApplicationWithLinkTests(APITestCase):
     def _payload(self, token=""):
         return {
             "performance_id": self.perf.id,
-            "seat_tier_id": self.tier.id,
+            "first_choice_seat_tier_id": self.tier.id,
             "quantity": 2,
             "guest_name": "応募花子",
             "guest_phone": "090-1111-1111",
@@ -246,7 +246,7 @@ class ApplicationWithLinkTests(APITestCase):
                 "/api/applications/",
                 {
                     "performance_id": self.perf.id,
-                    "seat_tier_id": self.tier.id,
+                    "first_choice_seat_tier_id": self.tier.id,
                     "quantity": 1,
                     "guest_name": f"応募者{i}",
                     "guest_phone": f"090-{i:04d}-0000",
@@ -348,7 +348,11 @@ class ApplicationConfirmTests(APITestCase):
 
     def test_confirm_moves_applied_to_confirmed(self):
         app = self._make_applied()
-        res = self.client.post(f"/api/staff/applications/{app.id}/confirm/")
+        res = self.client.post(
+            f"/api/staff/applications/{app.id}/confirm/",
+            {"assigned_seat_tier_id": self.tier.id},
+            format="json",
+        )
         self.assertEqual(res.status_code, 200)
         app.refresh_from_db()
         self.assertEqual(app.status, "confirmed")
@@ -417,7 +421,7 @@ class FanclubMemberTests(APITestCase):
     def _payload(self, is_fc):
         return {
             "performance_id": self.perf.id,
-            "seat_tier_id": self.tier.id,
+            "first_choice_seat_tier_id": self.tier.id,
             "quantity": 1,
             "guest_name": "FC太郎" if is_fc else "一般花子",
             "guest_phone": "090-0000-0000",

@@ -16,10 +16,10 @@ from events.models import Event, Performance, SeatTier
 SLUG = "paradise-effect"
 
 SEAT_TIERS = [
-    {"code": "front_row", "name": "最前席", "capacity": 10, "price_card": 5000, "price_cash": 5000, "sort_order": 0},
-    {"code": "front", "name": "前方席", "capacity": 20, "price_card": 4000, "price_cash": 4000, "sort_order": 1},
-    {"code": "center", "name": "中央席", "capacity": 30, "price_card": 3500, "price_cash": 3500, "sort_order": 2},
-    {"code": "rear", "name": "後方席", "capacity": 20, "price_card": 3000, "price_cash": 3000, "sort_order": 3},
+    {"code": "row_a", "name": "A列", "capacity": 10, "price_card": 5000, "price_cash": 5000, "sort_order": 0},
+    {"code": "row_b", "name": "B列", "capacity": 20, "price_card": 4000, "price_cash": 4000, "sort_order": 1},
+    {"code": "row_c", "name": "C列", "capacity": 30, "price_card": 3500, "price_cash": 3500, "sort_order": 2},
+    {"code": "row_d_bench", "name": "D列ベンチシート", "capacity": 20, "price_card": 3000, "price_cash": 3000, "sort_order": 3},
 ]
 
 PERFORMANCES = [

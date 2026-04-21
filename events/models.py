@@ -48,10 +48,11 @@ class Performance(models.Model):
 
 class SeatTier(models.Model):
     class TierCode(models.TextChoices):
-        FRONT_ROW = "front_row", "最前席"
-        FRONT = "front", "前方席"
-        CENTER = "center", "中央席"
-        REAR = "rear", "後方席"
+        ROW_A = "row_a", "A列"
+        ROW_B = "row_b", "B列"
+        ROW_C = "row_c", "C列"
+        ROW_D_BENCH = "row_d_bench", "D列ベンチシート"
+        ROW_E_BENCH = "row_e_bench", "E列ベンチシート"
 
     performance = models.ForeignKey(
         Performance,
