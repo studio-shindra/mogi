@@ -31,6 +31,14 @@ def reservation_create(request):
     serializer = ReservationCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     reservation = serializer.save()
+
+    if reservation.guest_email:
+        try:
+            from .emails import send_reservation_email
+            send_reservation_email(reservation)
+        except Exception:
+            logger.exception("予約通知メール送信失敗: reservation=%s", reservation.pk)
+
     return Response(
         ReservationDetailSerializer(reservation).data,
         status=status.HTTP_201_CREATED,
