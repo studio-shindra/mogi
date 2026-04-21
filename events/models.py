@@ -11,6 +11,7 @@ class Event(models.Model):
     venue_address = models.CharField("会場住所", max_length=500, blank=True)
     cast = models.TextField("出演", blank=True)
     flyer_image_url = models.URLField("フライヤー画像URL", max_length=500, blank=True)
+    public_entry_enabled = models.BooleanField("本URL公開", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -65,8 +66,8 @@ class SeatTier(models.Model):
     )
     name = models.CharField("席種表示名", max_length=50)
     capacity = models.PositiveIntegerField("定員")
-    price_card = models.PositiveIntegerField("カード決済価格")
-    price_cash = models.PositiveIntegerField("現金価格")
+    price_card = models.PositiveIntegerField("前売り価格")
+    price_cash = models.PositiveIntegerField("当日価格")
     sort_order = models.PositiveSmallIntegerField("表示順", default=0)
 
     class Meta:

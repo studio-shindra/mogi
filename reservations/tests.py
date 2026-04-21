@@ -48,24 +48,26 @@ def _make_fixture():
 
 class LinkDetailApiTests(APITestCase):
     def setUp(self):
-        _event, self.perf, self.tier = _make_fixture()
+        self.event, self.perf, self.tier = _make_fixture()
         self.link = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.RESERVATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="1次先行予約",
             is_active=True,
         )
 
-    def test_link_detail_returns_mode_and_performance(self):
+    def test_link_detail_returns_mode_and_event(self):
         res = self.client.get(f"/api/links/{self.link.token}/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["mode"], "reservation")
         self.assertEqual(res.data["sales_channel"], "advance")
         self.assertEqual(res.data["label"], "1次先行予約")
         self.assertTrue(res.data["is_active"])
-        self.assertEqual(res.data["performance"]["id"], self.perf.id)
-        self.assertEqual(len(res.data["performance"]["seat_tiers"]), 1)
+        self.assertEqual(res.data["event"]["id"], self.event.id)
+        self.assertEqual(len(res.data["event"]["performances"]), 1)
+        self.assertEqual(res.data["event"]["performances"][0]["id"], self.perf.id)
+        self.assertEqual(len(res.data["event"]["performances"][0]["seat_tiers"]), 1)
 
     def test_link_detail_inactive_returns_410(self):
         self.link.is_active = False
@@ -82,15 +84,15 @@ class ReservationWithLinkTests(APITestCase):
     """B3: 限定URL経由の予約で sales_channel が link に従う"""
 
     def setUp(self):
-        _event, self.perf, self.tier = _make_fixture()
+        self.event, self.perf, self.tier = _make_fixture()
         self.link_a = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.RESERVATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="1次先行予約",
         )
         self.link_c = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.RESERVATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="2次先行通過者予約",
@@ -142,7 +144,7 @@ class ReservationWithLinkTests(APITestCase):
     def test_application_link_rejects_reservation_create(self):
         """application mode の link で /api/reservations/ は弾く"""
         app_link = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.APPLICATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="2次先行応募",
@@ -150,20 +152,51 @@ class ReservationWithLinkTests(APITestCase):
         res = self.client.post("/api/reservations/", self._payload(app_link.token), format="json")
         self.assertEqual(res.status_code, 400)
 
-    def test_performance_mismatch_rejects(self):
+    def test_same_event_other_performance_is_accepted(self):
+        """同 event の別公演でもリンクは有効（event 単位URL）"""
         other_perf = Performance.objects.create(
-            event=self.perf.event,
+            event=self.event,
             label="2nd",
             starts_at=timezone.now() + timedelta(days=8),
             open_at=timezone.now() + timedelta(days=8, hours=-1),
         )
-        other_link = AccessLink.objects.create(
+        other_tier = SeatTier.objects.create(
             performance=other_perf,
-            mode=AccessLink.Mode.RESERVATION,
-            sales_channel=Reservation.SalesChannel.ADVANCE,
-            label="他公演の先行予約",
+            code=SeatTier.TierCode.CENTER,
+            name="中央席",
+            capacity=10,
+            price_card=3000,
+            price_cash=3000,
         )
-        res = self.client.post("/api/reservations/", self._payload(other_link.token), format="json")
+        payload = self._payload(self.link_a.token)
+        payload["performance_id"] = other_perf.id
+        payload["seat_tier_id"] = other_tier.id
+        res = self.client.post("/api/reservations/", payload, format="json")
+        self.assertEqual(res.status_code, 201)
+
+    def test_other_event_performance_rejects(self):
+        """別 event の公演は event 不一致で弾く"""
+        other_event = Event.objects.create(
+            title="Other Event", slug="other", organizer_email="o@example.com",
+        )
+        other_perf = Performance.objects.create(
+            event=other_event,
+            label="other",
+            starts_at=timezone.now() + timedelta(days=8),
+            open_at=timezone.now() + timedelta(days=8, hours=-1),
+        )
+        other_tier = SeatTier.objects.create(
+            performance=other_perf,
+            code=SeatTier.TierCode.CENTER,
+            name="中央席",
+            capacity=10,
+            price_card=3000,
+            price_cash=3000,
+        )
+        payload = self._payload(self.link_a.token)
+        payload["performance_id"] = other_perf.id
+        payload["seat_tier_id"] = other_tier.id
+        res = self.client.post("/api/reservations/", payload, format="json")
         self.assertEqual(res.status_code, 400)
 
 
@@ -171,9 +204,9 @@ class ApplicationWithLinkTests(APITestCase):
     """B2/B3: 応募は status=applied、在庫非消費、link 経由で sales_channel 注入"""
 
     def setUp(self):
-        _event, self.perf, self.tier = _make_fixture()
+        self.event, self.perf, self.tier = _make_fixture()
         self.link_b = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.APPLICATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="2次先行応募",
@@ -198,7 +231,7 @@ class ApplicationWithLinkTests(APITestCase):
 
     def test_reservation_link_rejects_application(self):
         res_link = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.RESERVATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="予約用",
@@ -372,9 +405,9 @@ class FanclubMemberTests(APITestCase):
     """応募フォームの FC会員フラグ"""
 
     def setUp(self):
-        _event, self.perf, self.tier = _make_fixture()
+        self.event, self.perf, self.tier = _make_fixture()
         self.link_b = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.APPLICATION,
             sales_channel=Reservation.SalesChannel.ADVANCE,
             label="2次先行応募",
@@ -410,7 +443,7 @@ class FanclubMemberTests(APITestCase):
     def test_reservation_ignores_fanclub_field(self):
         """通常予約は is_fanclub_member を受け付けず default False"""
         res_link = AccessLink.objects.create(
-            performance=self.perf,
+            event=self.event,
             mode=AccessLink.Mode.RESERVATION,
             sales_channel=Reservation.SalesChannel.GENERAL,
             label="一般",

@@ -17,11 +17,13 @@ class SeatTierInline(admin.TabularInline):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("title", "slug", "venue_name", "created_at")
+    list_display = ("title", "slug", "venue_name", "public_entry_enabled", "created_at")
+    list_filter = ("public_entry_enabled",)
     prepopulated_fields = {"slug": ("title",)}
     inlines = [PerformanceInline]
     fieldsets = (
         (None, {"fields": ("title", "slug", "description", "cast", "flyer_image_url")}),
+        ("公開設定", {"fields": ("public_entry_enabled",)}),
         ("会場", {"fields": ("venue_name", "venue_address")}),
         ("主催者", {"fields": ("organizer_name", "organizer_email")}),
     )

@@ -3,7 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchLink } from '../api/links.js'
 import { createReservation, createApplication } from '../api/reservations.js'
-import { IconCircleCheck, IconArmchair } from '@tabler/icons-vue'
+import { IconCircleCheck, IconArmchair, IconCalendarEvent } from '@tabler/icons-vue'
+import { formatJstTime } from '../utils/datetime.js'
 
 const props = defineProps({ token: String })
 const router = useRouter()
@@ -17,6 +18,7 @@ const submitting = ref(false)
 const submitted = ref(false)
 const submitError = ref('')
 
+const selectedPerformanceId = ref(null)
 const selectedTierId = ref(null)
 const quantity = ref(1)
 const guestName = ref('')
@@ -26,8 +28,13 @@ const memo = ref('')
 const isFanclubMember = ref(false)
 
 const mode = computed(() => link.value?.mode)
-const performance = computed(() => link.value?.performance)
-const seatTiers = computed(() => performance.value?.seat_tiers ?? [])
+const event = computed(() => link.value?.event)
+const performances = computed(() => event.value?.performances ?? [])
+
+const selectedPerformance = computed(() =>
+  performances.value.find((p) => p.id === selectedPerformanceId.value),
+)
+const seatTiers = computed(() => selectedPerformance.value?.seat_tiers ?? [])
 
 const selectedTier = computed(() =>
   seatTiers.value.find((t) => t.id === selectedTierId.value),
@@ -51,6 +58,7 @@ const maxQuantity = computed(() => {
 })
 
 const canSubmit = computed(() => {
+  if (!selectedPerformanceId.value) return false
   if (!selectedTierId.value) return false
   if (!guestName.value.trim()) return false
   if (!guestPhone.value.trim()) return false
@@ -62,12 +70,45 @@ const canSubmit = computed(() => {
   return true
 })
 
-const tierPrice = computed(() => selectedTier.value?.price_cash ?? 0)
+const tierPrice = computed(() => selectedTier.value?.price_card ?? 0)
 const totalPrice = computed(() => tierPrice.value * quantity.value)
+
+const headerImageUrl = computed(
+  () => link.value?.header_image_url || event.value?.flyer_image_url || '',
+)
+const hasHeader = computed(() => !!headerImageUrl.value)
+
+function performanceRemaining(perf) {
+  return (perf.seat_tiers ?? []).reduce(
+    (sum, t) => sum + (t.remaining ?? t.capacity ?? 0),
+    0,
+  )
+}
+
+function performanceSoldOut(perf) {
+  if (isApplication.value) return false
+  return performanceRemaining(perf) <= 0
+}
+
+function selectPerformance(perf) {
+  if (performanceSoldOut(perf)) return
+  selectedPerformanceId.value = perf.id
+  selectedTierId.value = null
+  quantity.value = 1
+}
+
+function backToPerformanceSelect() {
+  selectedPerformanceId.value = null
+  selectedTierId.value = null
+}
 
 onMounted(async () => {
   try {
     link.value = await fetchLink(props.token)
+    // 公演が1本なら自動選択
+    if (performances.value.length === 1) {
+      selectedPerformanceId.value = performances.value[0].id
+    }
   } catch (e) {
     if (e.response?.status === 404) notFound.value = true
     else if (e.response?.status === 410) inactive.value = true
@@ -83,7 +124,7 @@ async function handleSubmit() {
   submitError.value = ''
   try {
     const payload = {
-      performance_id: performance.value.id,
+      performance_id: selectedPerformanceId.value,
       seat_tier_id: selectedTierId.value,
       quantity: quantity.value,
       guest_name: guestName.value.trim(),
@@ -138,15 +179,95 @@ async function handleSubmit() {
       </div>
     </template>
 
-    <template v-else-if="performance">
-      <h1 class="fs-5 fw-bold mb-1">{{ headingLabel }}</h1>
-      <p class="text-muted small mb-1">{{ link.label }}</p>
-      <p class="small text-muted mb-1">{{ performance.event_title }}</p>
-      <p class="small text-muted mb-4">
-        {{ performance.label }}
-        / 開場 {{ performance.open_at.slice(11, 16) }}
-        / 開演 {{ performance.starts_at.slice(11, 16) }}
-      </p>
+    <!-- 公演選択ステップ -->
+    <template v-else-if="event && !selectedPerformance">
+      <img
+        v-if="hasHeader"
+        :src="headerImageUrl"
+        :alt="event.title"
+        class="w-100 rounded mb-3"
+      />
+      <div v-if="hasHeader" class="mb-4">
+        <span class="badge rounded-pill bg-mogi text-white px-3 py-2">
+          {{ headingLabel }}
+        </span>
+      </div>
+      <template v-else>
+        <h1 class="fs-5 fw-bold mb-1">{{ headingLabel }}</h1>
+        <p class="text-muted small mb-1">{{ link.label }}</p>
+        <p class="small text-muted mb-4">{{ event.title }}</p>
+      </template>
+
+      <div v-if="performances.length === 0" class="text-center py-5 text-muted">
+        現在予約可能な公演がありません
+      </div>
+
+      <div v-else class="mb-3">
+        <label class="form-label fw-bold fs-5 mb-1">公演を選択</label>
+        <p class="small text-muted mb-2">※【】内はアフタートークのゲストです</p>
+        <div class="d-flex flex-column gap-2">
+          <button
+            v-for="perf in performances"
+            :key="perf.id"
+            type="button"
+            class="card text-start border"
+            :disabled="performanceSoldOut(perf)"
+            @click="selectPerformance(perf)"
+          >
+            <div class="card-body py-3 d-flex align-items-center gap-2">
+              <IconCalendarEvent :size="20" class="text-mogi" />
+              <div class="flex-grow-1">
+                <div class="fw-bold">{{ perf.label }}</div>
+                <div class="text-muted small">
+                  開場 {{ formatJstTime(perf.open_at) }}
+                  / 開演 {{ formatJstTime(perf.starts_at) }}
+                </div>
+              </div>
+              <div v-if="isReservation && performanceSoldOut(perf)" class="text-muted small">
+                完売
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- 席種 → 情報入力 → 送信 -->
+    <template v-else-if="selectedPerformance">
+      <img
+        v-if="hasHeader"
+        :src="headerImageUrl"
+        :alt="event.title"
+        class="w-100 rounded mb-3"
+      />
+      <div v-if="hasHeader" class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge rounded-pill bg-mogi text-white px-3 py-2">
+          {{ headingLabel }}
+        </span>
+        <span class="small text-muted">
+          {{ selectedPerformance.label }}
+          / 開演 {{ formatJstTime(selectedPerformance.starts_at) }}
+        </span>
+      </div>
+      <template v-else>
+        <h1 class="fs-5 fw-bold mb-1">{{ headingLabel }}</h1>
+        <p class="text-muted small mb-1">{{ link.label }}</p>
+        <p class="small text-muted mb-1">{{ event.title }}</p>
+        <p class="small text-muted mb-4">
+          {{ selectedPerformance.label }}
+          / 開場 {{ formatJstTime(selectedPerformance.open_at) }}
+          / 開演 {{ formatJstTime(selectedPerformance.starts_at) }}
+        </p>
+      </template>
+
+      <button
+        v-if="performances.length > 1"
+        type="button"
+        class="btn btn-link btn-sm p-0 mb-3"
+        @click="backToPerformanceSelect"
+      >
+        ← 公演を選び直す
+      </button>
 
       <div
         v-if="isApplication"
@@ -190,7 +311,7 @@ async function handleSubmit() {
                 </div>
               </div>
               <div class="fw-bold">
-                {{ t.price_cash.toLocaleString() }}<small class="text-muted fw-normal">円</small>
+                {{ t.price_card.toLocaleString() }}<small class="text-muted fw-normal">円</small>
               </div>
             </div>
           </button>

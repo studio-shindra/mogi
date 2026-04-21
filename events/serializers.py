@@ -66,6 +66,7 @@ class EventSerializer(serializers.ModelSerializer):
             "venue_address",
             "cast",
             "flyer_image_url",
+            "public_entry_enabled",
             "performances",
         ]
 

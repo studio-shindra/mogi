@@ -7,6 +7,7 @@ import { useReservationForm } from '../composables/useReservationForm.js'
 import SeatTierSelector from '../components/event/SeatTierSelector.vue'
 import GuestInfoForm from '../components/reservation/GuestInfoForm.vue'
 import ReservationSummary from '../components/reservation/ReservationSummary.vue'
+import { formatJstTime } from '../utils/datetime.js'
 
 const props = defineProps({ slug: String, performanceId: String })
 const router = useRouter()
@@ -78,8 +79,8 @@ async function handleSubmit() {
 
       <h2 class="fs-5 fw-bold mb-1">{{ form.performance.value.label }}</h2>
       <p class="small text-muted mb-4">
-        開場 {{ form.performance.value.open_at.slice(11, 16) }}
-        / 開演 {{ form.performance.value.starts_at.slice(11, 16) }}
+        開場 {{ formatJstTime(form.performance.value.open_at) }}
+        / 開演 {{ formatJstTime(form.performance.value.starts_at) }}
       </p>
 
       <!-- ステップインジケーター -->

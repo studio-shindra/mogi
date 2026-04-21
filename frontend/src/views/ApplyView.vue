@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue'
 import { fetchEventDetail } from '../api/events.js'
 import { createApplication } from '../api/reservations.js'
 import { IconCircleCheck } from '@tabler/icons-vue'
+import { formatJstTime } from '../utils/datetime.js'
 
 const props = defineProps({ slug: String, performanceId: String })
 
@@ -95,8 +96,8 @@ async function handleSubmit() {
       <p class="text-muted small mb-1">{{ eventTitle }}</p>
       <p class="small text-muted mb-4">
         {{ performance.label }}
-        / 開場 {{ performance.open_at.slice(11, 16) }}
-        / 開演 {{ performance.starts_at.slice(11, 16) }}
+        / 開場 {{ formatJstTime(performance.open_at) }}
+        / 開演 {{ formatJstTime(performance.starts_at) }}
       </p>
 
       <div class="alert bg-mogi-light border-0 small py-2 mb-4">
@@ -122,7 +123,7 @@ async function handleSubmit() {
           >
             <div class="card-body py-3 d-flex justify-content-between align-items-center">
               <span class="fw-bold">{{ t.name }}</span>
-              <span class="fw-bold">{{ t.price_cash.toLocaleString() }}<small class="text-muted fw-normal">円</small></span>
+              <span class="fw-bold">{{ t.price_card.toLocaleString() }}<small class="text-muted fw-normal">円</small></span>
             </div>
           </button>
         </div>

@@ -120,8 +120,8 @@ class ReservationCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"link_token": "このリンクは無効です"})
             if link.mode != AccessLink.Mode.RESERVATION:
                 raise serializers.ValidationError({"link_token": "このリンクは予約用ではありません"})
-            if link.performance_id != performance.pk:
-                raise serializers.ValidationError({"link_token": "リンクの公演と一致しません"})
+            if link.event_id != performance.event_id:
+                raise serializers.ValidationError({"link_token": "リンクの作品と一致しません"})
 
         data["_performance"] = performance
         data["_seat_tier"] = seat_tier
@@ -423,8 +423,8 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"link_token": "このリンクは無効です"})
             if link.mode != AccessLink.Mode.APPLICATION:
                 raise serializers.ValidationError({"link_token": "このリンクは応募用ではありません"})
-            if link.performance_id != performance.pk:
-                raise serializers.ValidationError({"link_token": "リンクの公演と一致しません"})
+            if link.event_id != performance.event_id:
+                raise serializers.ValidationError({"link_token": "リンクの作品と一致しません"})
 
         # 応募は在庫を減らさない（在庫チェック不要、定員超過の応募も許容）
         data["_performance"] = performance
@@ -456,26 +456,34 @@ class ApplicationCreateSerializer(serializers.Serializer):
 
 
 class AccessLinkPublicSerializer(serializers.Serializer):
-    """公開 GET /api/links/<token>/ 用（mode と performance を返す）"""
+    """公開 GET /api/links/<token>/ 用（mode と event + 公演一覧を返す）"""
     token = serializers.CharField()
     mode = serializers.CharField()
     sales_channel = serializers.CharField()
     label = serializers.CharField()
+    header_image_url = serializers.CharField(allow_blank=True)
     is_active = serializers.BooleanField()
-    performance = serializers.SerializerMethodField()
+    event = serializers.SerializerMethodField()
 
-    def get_performance(self, obj):
-        perf = obj.performance
-        event = perf.event
+    def get_event(self, obj):
+        event = obj.event
+        performances = event.performances.all().order_by("starts_at")
         return {
-            "id": perf.id,
-            "label": perf.label,
-            "starts_at": perf.starts_at,
-            "open_at": perf.open_at,
-            "event_slug": event.slug,
-            "event_title": event.title,
+            "id": event.id,
+            "slug": event.slug,
+            "title": event.title,
             "venue_name": event.venue_name,
-            "seat_tiers": AvailableSeatTierSerializer(
-                perf.seat_tiers.order_by("sort_order"), many=True
-            ).data,
+            "flyer_image_url": event.flyer_image_url,
+            "performances": [
+                {
+                    "id": perf.id,
+                    "label": perf.label,
+                    "starts_at": perf.starts_at,
+                    "open_at": perf.open_at,
+                    "seat_tiers": AvailableSeatTierSerializer(
+                        perf.seat_tiers.all().order_by("sort_order"), many=True
+                    ).data,
+                }
+                for perf in performances
+            ],
         }

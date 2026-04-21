@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-only-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app.netlify.app", cast=Csv())
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,mogi-app.com,mogi-app-11259607193e.herokuapp.com", cast=Csv())
 
 # --- Apps -----------------------------------------------------------
 INSTALLED_APPS = [
@@ -105,14 +105,14 @@ REST_FRAMEWORK = {
 # --- CORS ------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://localhost:5174,https://mogi-app.com,https://mogi-app.netlify.app",
+    default="http://localhost:5173,http://localhost:5174,https://mogi-app.com",
     cast=Csv(),
 )
 
 # --- CSRF ------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:5173,http://localhost:5174,http://localhost:8000,http://localhost:8001,https://mogi-app.com,https://mogi-app.netlify.app",
+    default="http://localhost:5173,http://localhost:5174,http://localhost:8000,http://localhost:8001,https://mogi-app.com,https://mogi-app-11259607193e.herokuapp.com",
     cast=Csv(),
 )
 
@@ -143,4 +143,3 @@ DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="info@studio-shindra.c
 
 # --- Frontend --------------------------------------------------------
 FRONTEND_URL = config("FRONTEND_URL", default="https://mogi-app.com")
-STAGING_URL = config("STAGING_URL", default="https://mogi-app.netlify.app")

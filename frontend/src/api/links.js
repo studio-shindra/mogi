@@ -9,16 +9,23 @@ export async function fetchLink(token) {
       mode: 'reservation',
       sales_channel: 'advance',
       label: 'mock link',
+      header_image_url: '',
       is_active: true,
-      performance: {
+      event: {
         id: 1,
-        label: 'mock公演',
-        starts_at: new Date().toISOString(),
-        open_at: new Date().toISOString(),
-        event_slug: 'mock',
-        event_title: 'mock event',
+        slug: 'mock',
+        title: 'mock event',
         venue_name: 'mock venue',
-        seat_tiers: [],
+        flyer_image_url: '',
+        performances: [
+          {
+            id: 1,
+            label: 'mock公演',
+            starts_at: new Date().toISOString(),
+            open_at: new Date().toISOString(),
+            seat_tiers: [],
+          },
+        ],
       },
     }
   }

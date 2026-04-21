@@ -70,13 +70,16 @@ onMounted(async () => {
 
         <!-- 公演一覧 -->
         <h2 class="fs-6 text-muted text-uppercase mb-3" style="letter-spacing: 0.1em">Schedule</h2>
-        <div>
+        <div v-if="event.public_entry_enabled">
           <PerformanceCard
             v-for="perf in event.performances"
             :key="perf.id"
             :performance="perf"
             :slug="event.slug"
           />
+        </div>
+        <div v-else class="alert alert-secondary small text-center mb-0">
+          現在この受付は公開されていません
         </div>
       </div>
     </template>

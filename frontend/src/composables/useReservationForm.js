@@ -15,7 +15,7 @@ export function useReservationForm() {
   // --- computed ---
   const unitPrice = computed(() => {
     if (!selectedTier.value) return 0
-    return selectedTier.value.price_cash
+    return selectedTier.value.price_card
   })
 
   const totalPrice = computed(() => unitPrice.value * quantity.value)

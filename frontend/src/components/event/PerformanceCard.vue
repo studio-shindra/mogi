@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { IconChevronRight } from '@tabler/icons-vue'
+import { formatJstTime } from '../../utils/datetime.js'
 
 const props = defineProps({
   performance: { type: Object, required: true },
@@ -31,8 +32,8 @@ const availabilityLabel = computed(() => {
       <div>
         <div class="fw-bold">{{ performance.label }}</div>
         <small class="text-muted">
-          開場 {{ performance.open_at.slice(11, 16) }} /
-          開演 {{ performance.starts_at.slice(11, 16) }}
+          開場 {{ formatJstTime(performance.open_at) }} /
+          開演 {{ formatJstTime(performance.starts_at) }}
         </small>
       </div>
       <div class="d-flex align-items-center gap-2">

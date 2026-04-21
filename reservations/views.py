@@ -182,7 +182,9 @@ def staff_walk_in(request):
 def link_detail(request, token):
     """GET /api/links/<token>/ — 限定URL の公開情報を返す"""
     try:
-        link = AccessLink.objects.select_related("performance__event").get(token=token)
+        link = AccessLink.objects.select_related("event").prefetch_related(
+            "event__performances__seat_tiers",
+        ).get(token=token)
     except AccessLink.DoesNotExist:
         return Response(
             {"detail": "リンクが見つかりません"},

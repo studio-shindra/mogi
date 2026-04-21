@@ -133,7 +133,7 @@ class Reservation(models.Model):
 
 
 class AccessLink(models.Model):
-    """限定URL: 公演への入口を token で 1本発行し、mode/販売区分を backend が決める。"""
+    """限定URL: 作品への入口を token で 1本発行し、mode/販売区分を backend が決める。"""
 
     class Mode(models.TextChoices):
         RESERVATION = "reservation", "予約"
@@ -145,11 +145,11 @@ class AccessLink(models.Model):
         unique=True,
         default=_generate_link_token,
     )
-    performance = models.ForeignKey(
-        "events.Performance",
+    event = models.ForeignKey(
+        "events.Event",
         on_delete=models.CASCADE,
         related_name="access_links",
-        verbose_name="公演",
+        verbose_name="作品",
     )
     mode = models.CharField(
         "モード",
@@ -163,6 +163,11 @@ class AccessLink(models.Model):
         default=Reservation.SalesChannel.ADVANCE,
     )
     label = models.CharField("ラベル", max_length=100)
+    header_image_url = models.URLField(
+        "ヘッダー画像URL",
+        max_length=500,
+        blank=True,
+    )
     is_active = models.BooleanField("有効", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,9 +1,11 @@
 import logging
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import Sum
 from django.utils import timezone
+from django.utils.html import format_html
 
 from .emails import send_reservation_email
 from .models import AccessLink, Reservation
@@ -30,7 +32,7 @@ class ReservationAdminForm(forms.ModelForm):
 class ReservationAdmin(admin.ModelAdmin):
     form = ReservationAdminForm
     list_display = (
-        "guest_name",
+        "guest_name_nowrap",
         "performance",
         "seat_tier",
         "quantity",
@@ -42,6 +44,12 @@ class ReservationAdmin(admin.ModelAdmin):
         "is_fanclub_member",
         "created_at",
     )
+
+    @admin.display(description="氏名", ordering="guest_name")
+    def guest_name_nowrap(self, obj):
+        return format_html(
+            '<span style="white-space:nowrap;">{}</span>', obj.guest_name,
+        )
     list_filter = (
         "performance__event",
         "performance",
@@ -135,21 +143,36 @@ class AccessLinkAdmin(admin.ModelAdmin):
         "label",
         "mode",
         "sales_channel",
-        "performance",
+        "event",
         "is_active",
         "token_short",
         "created_at",
     )
     list_filter = (
-        "performance__event",
-        "performance",
+        "event",
         "mode",
         "sales_channel",
         "is_active",
     )
     search_fields = ("label", "token")
-    readonly_fields = ("token", "created_at", "updated_at")
+    readonly_fields = ("token", "full_url", "created_at", "updated_at")
 
     @admin.display(description="token")
     def token_short(self, obj):
         return f"{obj.token[:10]}..."
+
+    @admin.display(description="URL（コピー用）")
+    def full_url(self, obj):
+        if not obj.pk:
+            return "（保存後に表示されます）"
+        if settings.DEBUG:
+            base = "http://localhost:5173"
+        else:
+            base = settings.FRONTEND_URL.rstrip("/")
+        url = f"{base}/r/{obj.token}/"
+        return format_html(
+            '<input type="text" readonly value="{}" '
+            'style="width:100%;max-width:560px;padding:4px 8px;" '
+            'onclick="this.select()" />',
+            url,
+        )

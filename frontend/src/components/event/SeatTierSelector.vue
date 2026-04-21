@@ -14,7 +14,7 @@ const emit = defineEmits([
 ])
 
 function price(tier) {
-  return tier.price_cash
+  return tier.price_card
 }
 
 const maxQuantity = computed(() => {
