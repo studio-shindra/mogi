@@ -1,7 +1,10 @@
 import logging
 
+from django.conf import settings
 from django.db.models import Q, Sum
+from django.http import HttpResponse, HttpResponseNotFound
 from django.utils import timezone
+from django.utils.html import escape as html_escape
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -402,3 +405,65 @@ def reservation_checkout(request, token):
         {"detail": "オンライン事前決済は停止しました。当日会場にてお支払いください。"},
         status=status.HTTP_410_GONE,
     )
+
+
+# ====================================================================
+# OGP HTML (SNSクローラー向け)
+# ====================================================================
+
+def link_ogp_html(request, token):
+    """GET /r/<token>/ — LINE/Twitter/FB 等クローラー向け OGP メタタグ入り HTML。
+    Netlify 側で User-Agent 判定し、クローラーのみ Heroku にプロキシされる想定。
+    """
+    try:
+        link = AccessLink.objects.select_related("event").get(token=token)
+    except AccessLink.DoesNotExist:
+        return HttpResponseNotFound("Not Found")
+
+    event = link.event
+    title = f"{event.title} | {link.label}" if link.label else event.title
+
+    if event.description:
+        description = event.description
+    elif event.organizer_name:
+        description = f"{event.organizer_name} 主催の公演チケット受付ページです"
+    else:
+        description = "公演チケット受付ページです"
+
+    image_url = link.header_image_url or ""
+    page_url = f"{settings.FRONTEND_URL.rstrip('/')}/r/{token}/"
+
+    t = html_escape(title)
+    d = html_escape(description)
+    i = html_escape(image_url)
+    u = html_escape(page_url)
+
+    image_tags = ""
+    if image_url:
+        image_tags = (
+            f'<meta property="og:image" content="{i}">\n'
+            f'<meta name="twitter:image" content="{i}">\n'
+        )
+    twitter_card = "summary_large_image" if image_url else "summary"
+
+    html = f"""<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{t}</title>
+<meta name="description" content="{d}">
+<meta property="og:title" content="{t}">
+<meta property="og:description" content="{d}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{u}">
+{image_tags}<meta name="twitter:card" content="{twitter_card}">
+<meta name="twitter:title" content="{t}">
+<meta name="twitter:description" content="{d}">
+</head>
+<body>
+<p><a href="{u}">こちらをタップして開く</a></p>
+</body>
+</html>
+"""
+    return HttpResponse(html, content_type="text/html; charset=utf-8")
