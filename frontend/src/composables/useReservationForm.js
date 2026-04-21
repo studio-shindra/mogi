@@ -24,7 +24,7 @@ export function useReservationForm() {
     () =>
       selectedTier.value !== null &&
       quantity.value >= 1 &&
-      quantity.value <= 10 &&
+      quantity.value <= 4 &&
       quantity.value <= (selectedTier.value?.remaining ?? 0),
   )
 

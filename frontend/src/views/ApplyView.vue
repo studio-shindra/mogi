@@ -15,7 +15,9 @@ const submitError = ref('')
 const eventTitle = ref('')
 const performance = ref(null)
 
-const selectedTierId = ref(null)
+const firstChoiceTierId = ref(null)
+const secondChoiceTierId = ref(null)
+const allowAnySeat = ref(false)
 const quantity = ref(1)
 const guestName = ref('')
 const guestEmail = ref('')
@@ -23,16 +25,27 @@ const guestPhone = ref('')
 const memo = ref('')
 const isFanclubMember = ref(false)
 
-const selectedTier = computed(() =>
-  performance.value?.seat_tiers.find((t) => t.id === selectedTierId.value),
+const secondChoiceTiers = computed(() =>
+  (performance.value?.seat_tiers ?? []).filter((t) => t.id !== firstChoiceTierId.value),
 )
 
 const canSubmit = computed(() => {
-  if (!selectedTierId.value) return false
+  if (!firstChoiceTierId.value) return false
   if (!guestName.value.trim()) return false
   if (!guestPhone.value.trim()) return false
-  return quantity.value >= 1 && quantity.value <= 10
+  return quantity.value >= 1 && quantity.value <= 4
 })
+
+function selectFirst(tierId) {
+  firstChoiceTierId.value = tierId
+  if (secondChoiceTierId.value === tierId) {
+    secondChoiceTierId.value = null
+  }
+}
+
+function selectSecond(tierId) {
+  secondChoiceTierId.value = secondChoiceTierId.value === tierId ? null : tierId
+}
 
 onMounted(async () => {
   try {
@@ -55,7 +68,9 @@ async function handleSubmit() {
   try {
     await createApplication({
       performance_id: performance.value.id,
-      seat_tier_id: selectedTierId.value,
+      first_choice_seat_tier_id: firstChoiceTierId.value,
+      second_choice_seat_tier_id: secondChoiceTierId.value,
+      allow_any_seat: allowAnySeat.value,
       quantity: quantity.value,
       guest_name: guestName.value.trim(),
       guest_email: guestEmail.value.trim(),
@@ -105,9 +120,9 @@ async function handleSubmit() {
         当選後、会場にて現金でお支払いいただきます。
       </div>
 
-      <!-- 席種 -->
+      <!-- 第一希望席 -->
       <div class="mb-3">
-        <label class="form-label small text-muted">希望席種 <span class="text-danger">*</span></label>
+        <label class="form-label small text-muted">第一希望席 <span class="text-danger">*</span></label>
         <div class="d-flex flex-column gap-2">
           <button
             v-for="t in performance.seat_tiers"
@@ -115,11 +130,11 @@ async function handleSubmit() {
             type="button"
             class="card text-start border"
             :class="{
-              'border-2': selectedTierId === t.id,
-              'bg-mogi-light': selectedTierId === t.id,
+              'border-2': firstChoiceTierId === t.id,
+              'bg-mogi-light': firstChoiceTierId === t.id,
             }"
-            :style="selectedTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
-            @click="selectedTierId = t.id"
+            :style="firstChoiceTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
+            @click="selectFirst(t.id)"
           >
             <div class="card-body py-3 d-flex justify-content-between align-items-center">
               <span class="fw-bold">{{ t.name }}</span>
@@ -129,12 +144,52 @@ async function handleSubmit() {
         </div>
       </div>
 
+      <!-- 第二希望席 -->
+      <div class="mb-3">
+        <label class="form-label small text-muted">第二希望席（任意）</label>
+        <div class="d-flex flex-column gap-2">
+          <button
+            v-for="t in secondChoiceTiers"
+            :key="t.id"
+            type="button"
+            class="card text-start border"
+            :class="{
+              'border-2': secondChoiceTierId === t.id,
+              'bg-mogi-light': secondChoiceTierId === t.id,
+            }"
+            :style="secondChoiceTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
+            @click="selectSecond(t.id)"
+          >
+            <div class="card-body py-3 d-flex justify-content-between align-items-center">
+              <span class="fw-bold">{{ t.name }}</span>
+              <span class="fw-bold">{{ t.price_card.toLocaleString() }}<small class="text-muted fw-normal">円</small></span>
+            </div>
+          </button>
+        </div>
+        <div class="form-text small">もう一度押すと選択解除できます</div>
+      </div>
+
+      <!-- どの席でも可 -->
+      <div class="mb-3">
+        <div class="form-check">
+          <input
+            id="allow-any-seat"
+            class="form-check-input"
+            type="checkbox"
+            v-model="allowAnySeat"
+          />
+          <label class="form-check-label small" for="allow-any-seat">
+            希望席が取れない場合、どの席でもご案内可能
+          </label>
+        </div>
+      </div>
+
       <!-- 枚数 -->
       <div class="mb-3">
         <label class="form-label small text-muted">希望枚数 <span class="text-danger">*</span></label>
         <div class="d-flex gap-2 flex-wrap">
           <button
-            v-for="n in 10"
+            v-for="n in 4"
             :key="n"
             type="button"
             class="btn"

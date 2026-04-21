@@ -84,7 +84,7 @@ async function handleSubmit() {
       <div class="col-md-3">
         <label class="form-label small fw-bold">枚数</label>
         <select class="form-select form-select-sm" v-model.number="quantity">
-          <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+          <option v-for="n in 4" :key="n" :value="n">{{ n }}</option>
         </select>
       </div>
     </div>

@@ -1,10 +1,12 @@
 import logging
 
 from django.conf import settings
+from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.db.models import Q, Sum
 from django.http import HttpResponse, HttpResponseNotFound
 from django.utils import timezone
 from django.utils.html import escape as html_escape
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -182,6 +184,100 @@ def staff_walk_in(request):
         StaffReservationSerializer(reservation).data,
         status=status.HTTP_201_CREATED,
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def staff_performance_summary(request):
+    """GET /api/staff/performance-summary/ — 公演別の運営サマリー + 売上サマリー
+
+    各公演について以下を返す:
+      capacity / remaining / checked_in / not_checked_in（運営）
+      count / quantity / revenue_estimate / unpaid_count / invite_qty /
+      advance_qty / walk_in_qty（売上）
+
+    母集団: Reservation.status in ('pending', 'confirmed')（applied/cancelled/draft は除外）。
+    売上概算ルール:
+      - reservation_type='invite' または sales_channel='invite' は 0 円
+      - sales_channel='walk_in' は seat_tier.price_cash
+      - それ以外は seat_tier.price_card
+    """
+    from django.db.models.functions import Coalesce
+    from events.models import Performance
+
+    active_statuses = [Reservation.Status.PENDING, Reservation.Status.CONFIRMED]
+
+    performances = (
+        Performance.objects
+        .select_related("event")
+        .annotate(
+            capacity_sum=Coalesce(Sum("seat_tiers__capacity"), 0),
+        )
+        .order_by("starts_at")
+    )
+
+    results = []
+    for perf in performances:
+        reservations = (
+            Reservation.objects
+            .filter(performance=perf, status__in=active_statuses)
+            .select_related("seat_tier")
+        )
+
+        count = 0
+        quantity = 0
+        checked_in_qty = 0
+        revenue_estimate = 0
+        unpaid_count = 0
+        invite_qty = 0
+        walk_in_qty = 0
+        advance_qty = 0
+
+        for r in reservations:
+            count += 1
+            quantity += r.quantity
+            if r.checked_in:
+                checked_in_qty += r.quantity
+            if r.payment_status == Reservation.PaymentStatus.UNPAID:
+                unpaid_count += 1
+
+            is_invite = (
+                r.reservation_type == Reservation.ReservationType.INVITE
+                or r.sales_channel == Reservation.SalesChannel.INVITE
+            )
+            is_walk_in = r.sales_channel == Reservation.SalesChannel.WALK_IN
+
+            if is_invite:
+                invite_qty += r.quantity
+            elif is_walk_in:
+                walk_in_qty += r.quantity
+                price = getattr(r.seat_tier, "price_cash", 0) or 0
+                revenue_estimate += price * r.quantity
+            else:
+                advance_qty += r.quantity
+                price = getattr(r.seat_tier, "price_card", 0) or 0
+                revenue_estimate += price * r.quantity
+
+        capacity = perf.capacity_sum or 0
+        results.append({
+            "performance_id": perf.id,
+            "event_title": perf.event.title,
+            "label": perf.label,
+            "starts_at": perf.starts_at,
+            "capacity": capacity,
+            "remaining": max(capacity - quantity, 0),
+            "checked_in": checked_in_qty,
+            "not_checked_in": max(quantity - checked_in_qty, 0),
+            "count": count,
+            "quantity": quantity,
+            "revenue_estimate": revenue_estimate,
+            "unpaid_count": unpaid_count,
+            "invite_qty": invite_qty,
+            "advance_qty": advance_qty,
+            "walk_in_qty": walk_in_qty,
+        })
+
+    return Response({"results": results})
 
 
 # ====================================================================
@@ -467,3 +563,54 @@ def link_ogp_html(request, token):
 </html>
 """
     return HttpResponse(html, content_type="text/html; charset=utf-8")
+
+
+# ====================================================================
+# Auth API（/manage 用）
+# ====================================================================
+
+def _user_payload(user):
+    return {
+        "username": user.username,
+        "is_staff": bool(user.is_staff or user.is_superuser),
+    }
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def auth_login(request):
+    """POST /api/auth/login/ — username/password でセッションログイン"""
+    username = (request.data.get("username") or "").strip()
+    password = request.data.get("password") or ""
+    if not username or not password:
+        return Response({"detail": "ユーザー名とパスワードを入力してください。"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    user = authenticate(request, username=username, password=password)
+    if user is None or not user.is_active:
+        return Response({"detail": "ログインに失敗しました。"},
+                        status=status.HTTP_401_UNAUTHORIZED)
+    if not (user.is_staff or user.is_superuser):
+        return Response({"detail": "管理画面への権限がありません。"},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    django_login(request, user)
+    return Response(_user_payload(user))
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def auth_logout(request):
+    """POST /api/auth/logout/"""
+    django_logout(request)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@ensure_csrf_cookie
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def auth_me(request):
+    """GET /api/auth/me/ — 認証状態確認（CSRFクッキー発行も兼ねる）"""
+    if request.user.is_authenticated:
+        return Response(_user_payload(request.user))
+    return Response({"username": None, "is_staff": False})

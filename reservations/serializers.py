@@ -25,6 +25,9 @@ class ReservationSeatTierSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     code = serializers.CharField()
+    capacity = serializers.IntegerField(required=False)
+    price_card = serializers.IntegerField(required=False)
+    price_cash = serializers.IntegerField(required=False)
 
 
 class AvailableSeatTierSerializer(serializers.Serializer):
@@ -54,7 +57,7 @@ class AvailableSeatTierSerializer(serializers.Serializer):
 class ReservationCreateSerializer(serializers.Serializer):
     performance_id = serializers.IntegerField()
     seat_tier_id = serializers.IntegerField()
-    quantity = serializers.IntegerField(min_value=1, max_value=10)
+    quantity = serializers.IntegerField(min_value=1, max_value=4)
     reservation_type = serializers.ChoiceField(
         choices=["cash", "invite"],
         required=False,
@@ -237,7 +240,7 @@ class StaffReservationSerializer(serializers.ModelSerializer):
 class WalkInCreateSerializer(serializers.Serializer):
     performance_id = serializers.IntegerField()
     seat_tier_id = serializers.IntegerField()
-    quantity = serializers.IntegerField(min_value=1, max_value=10)
+    quantity = serializers.IntegerField(min_value=1, max_value=4)
     guest_name = serializers.CharField(max_length=200)
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     memo = serializers.CharField(required=False, allow_blank=True, default="")
@@ -382,8 +385,12 @@ class CompleteReservationSerializer(serializers.Serializer):
 class ApplicationCreateSerializer(serializers.Serializer):
     """公開URL経由の応募フォーム。Reservation を status=applied で作成する。"""
     performance_id = serializers.IntegerField()
-    seat_tier_id = serializers.IntegerField()
-    quantity = serializers.IntegerField(min_value=1, max_value=10)
+    first_choice_seat_tier_id = serializers.IntegerField()
+    second_choice_seat_tier_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+    )
+    allow_any_seat = serializers.BooleanField(required=False, default=False)
+    quantity = serializers.IntegerField(min_value=1, max_value=4)
     guest_name = serializers.CharField(max_length=200)
     guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
@@ -402,14 +409,33 @@ class ApplicationCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"performance_id": "公演が見つかりません"})
 
         try:
-            seat_tier = SeatTier.objects.get(pk=data["seat_tier_id"])
+            first_tier = SeatTier.objects.get(pk=data["first_choice_seat_tier_id"])
         except SeatTier.DoesNotExist:
-            raise serializers.ValidationError({"seat_tier_id": "席種が見つかりません"})
-
-        if seat_tier.performance_id != performance.pk:
             raise serializers.ValidationError(
-                {"seat_tier_id": "この席種は指定した公演に属していません"}
+                {"first_choice_seat_tier_id": "第一希望席が見つかりません"}
             )
+        if first_tier.performance_id != performance.pk:
+            raise serializers.ValidationError(
+                {"first_choice_seat_tier_id": "第一希望席は指定した公演に属していません"}
+            )
+
+        second_tier = None
+        second_id = data.get("second_choice_seat_tier_id")
+        if second_id:
+            try:
+                second_tier = SeatTier.objects.get(pk=second_id)
+            except SeatTier.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"second_choice_seat_tier_id": "第二希望席が見つかりません"}
+                )
+            if second_tier.performance_id != performance.pk:
+                raise serializers.ValidationError(
+                    {"second_choice_seat_tier_id": "第二希望席は指定した公演に属していません"}
+                )
+            if second_tier.pk == first_tier.pk:
+                raise serializers.ValidationError(
+                    {"second_choice_seat_tier_id": "第一希望と第二希望は別の席種を選択してください"}
+                )
 
         # link_token 検証（任意）
         link = None
@@ -428,20 +454,25 @@ class ApplicationCreateSerializer(serializers.Serializer):
 
         # 応募は在庫を減らさない（在庫チェック不要、定員超過の応募も許容）
         data["_performance"] = performance
-        data["_seat_tier"] = seat_tier
+        data["_first_tier"] = first_tier
+        data["_second_tier"] = second_tier
         data["_link"] = link
         return data
 
     def create(self, validated_data):
         performance = validated_data.pop("_performance")
-        seat_tier = validated_data.pop("_seat_tier")
+        first_tier = validated_data.pop("_first_tier")
+        second_tier = validated_data.pop("_second_tier")
         link = validated_data.pop("_link", None)
 
         sales_channel = link.sales_channel if link else Reservation.SalesChannel.ADVANCE
 
         return Reservation.objects.create(
             performance=performance,
-            seat_tier=seat_tier,
+            seat_tier=None,
+            first_choice_seat_tier=first_tier,
+            second_choice_seat_tier=second_tier,
+            allow_any_seat=validated_data.get("allow_any_seat", False),
             quantity=validated_data["quantity"],
             reservation_type=Reservation.ReservationType.CASH,
             sales_channel=sales_channel,

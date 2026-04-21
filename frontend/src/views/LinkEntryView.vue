@@ -20,6 +20,9 @@ const submitError = ref('')
 
 const selectedPerformanceId = ref(null)
 const selectedTierId = ref(null)
+const firstChoiceTierId = ref(null)
+const secondChoiceTierId = ref(null)
+const allowAnySeat = ref(false)
 const quantity = ref(1)
 const guestName = ref('')
 const guestEmail = ref('')
@@ -39,6 +42,9 @@ const seatTiers = computed(() => selectedPerformance.value?.seat_tiers ?? [])
 const selectedTier = computed(() =>
   seatTiers.value.find((t) => t.id === selectedTierId.value),
 )
+const secondChoiceTiers = computed(() =>
+  seatTiers.value.filter((t) => t.id !== firstChoiceTierId.value),
+)
 
 const isApplication = computed(() => mode.value === 'application')
 const isReservation = computed(() => mode.value === 'reservation')
@@ -51,18 +57,22 @@ const submitLabel = computed(() =>
 )
 
 const maxQuantity = computed(() => {
-  if (!selectedTier.value) return 10
-  if (isApplication.value) return 10
-  const r = selectedTier.value.remaining ?? 10
-  return Math.max(1, Math.min(r, 10))
+  if (!selectedTier.value) return 4
+  if (isApplication.value) return 4
+  const r = selectedTier.value.remaining ?? 4
+  return Math.max(1, Math.min(r, 4))
 })
 
 const canSubmit = computed(() => {
   if (!selectedPerformanceId.value) return false
-  if (!selectedTierId.value) return false
+  if (isApplication.value) {
+    if (!firstChoiceTierId.value) return false
+  } else {
+    if (!selectedTierId.value) return false
+  }
   if (!guestName.value.trim()) return false
   if (!guestPhone.value.trim()) return false
-  if (quantity.value < 1 || quantity.value > 10) return false
+  if (quantity.value < 1 || quantity.value > 4) return false
   if (isReservation.value && selectedTier.value) {
     const r = selectedTier.value.remaining ?? 0
     if (quantity.value > r) return false
@@ -90,16 +100,34 @@ function performanceSoldOut(perf) {
   return performanceRemaining(perf) <= 0
 }
 
+function resetSeatSelection() {
+  selectedTierId.value = null
+  firstChoiceTierId.value = null
+  secondChoiceTierId.value = null
+  allowAnySeat.value = false
+}
+
 function selectPerformance(perf) {
   if (performanceSoldOut(perf)) return
   selectedPerformanceId.value = perf.id
-  selectedTierId.value = null
+  resetSeatSelection()
   quantity.value = 1
 }
 
 function backToPerformanceSelect() {
   selectedPerformanceId.value = null
-  selectedTierId.value = null
+  resetSeatSelection()
+}
+
+function selectFirstChoice(tierId) {
+  firstChoiceTierId.value = tierId
+  if (secondChoiceTierId.value === tierId) {
+    secondChoiceTierId.value = null
+  }
+}
+
+function selectSecondChoice(tierId) {
+  secondChoiceTierId.value = secondChoiceTierId.value === tierId ? null : tierId
 }
 
 onMounted(async () => {
@@ -125,7 +153,6 @@ async function handleSubmit() {
   try {
     const payload = {
       performance_id: selectedPerformanceId.value,
-      seat_tier_id: selectedTierId.value,
       quantity: quantity.value,
       guest_name: guestName.value.trim(),
       guest_email: guestEmail.value.trim(),
@@ -134,11 +161,15 @@ async function handleSubmit() {
     }
 
     if (isApplication.value) {
+      payload.first_choice_seat_tier_id = firstChoiceTierId.value
+      payload.second_choice_seat_tier_id = secondChoiceTierId.value
+      payload.allow_any_seat = allowAnySeat.value
       payload.memo = memo.value.trim()
       payload.is_fanclub_member = isFanclubMember.value
       await createApplication(payload)
       submitted.value = true
     } else {
+      payload.seat_tier_id = selectedTierId.value
       const result = await createReservation(payload)
       router.push({ name: 'reservation-confirm', params: { token: result.token } })
     }
@@ -283,10 +314,10 @@ async function handleSubmit() {
         お支払いは当日会場にて現金でお願いいたします。
       </div>
 
-      <!-- 席種 -->
-      <div class="mb-3">
+      <!-- 席種（予約モード） -->
+      <div v-if="isReservation" class="mb-3">
         <label class="form-label small text-muted">
-          {{ isApplication ? '希望席種' : '席種' }} <span class="text-danger">*</span>
+          席種 <span class="text-danger">*</span>
         </label>
         <div class="d-flex flex-column gap-2">
           <button
@@ -299,7 +330,7 @@ async function handleSubmit() {
               'bg-mogi-light': selectedTierId === t.id,
             }"
             :style="selectedTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
-            :disabled="isReservation && (t.remaining ?? 0) <= 0"
+            :disabled="(t.remaining ?? 0) <= 0"
             @click="selectedTierId = t.id"
           >
             <div class="card-body py-3 d-flex justify-content-between align-items-center">
@@ -307,7 +338,7 @@ async function handleSubmit() {
                 <IconArmchair :size="20" class="text-mogi" />
                 <div>
                   <div class="fw-bold">{{ t.name }}</div>
-                  <div v-if="isReservation && (t.remaining ?? 0) <= 0" class="text-muted small">完売</div>
+                  <div v-if="(t.remaining ?? 0) <= 0" class="text-muted small">完売</div>
                 </div>
               </div>
               <div class="fw-bold">
@@ -317,6 +348,85 @@ async function handleSubmit() {
           </button>
         </div>
       </div>
+
+      <!-- 希望席（応募モード） -->
+      <template v-else>
+        <!-- 第一希望席 -->
+        <div class="mb-3">
+          <label class="form-label small text-muted">
+            第一希望席 <span class="text-danger">*</span>
+          </label>
+          <div class="d-flex flex-column gap-2">
+            <button
+              v-for="t in seatTiers"
+              :key="t.id"
+              type="button"
+              class="card text-start border"
+              :class="{
+                'border-2': firstChoiceTierId === t.id,
+                'bg-mogi-light': firstChoiceTierId === t.id,
+              }"
+              :style="firstChoiceTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
+              @click="selectFirstChoice(t.id)"
+            >
+              <div class="card-body py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <IconArmchair :size="20" class="text-mogi" />
+                  <div class="fw-bold">{{ t.name }}</div>
+                </div>
+                <div class="fw-bold">
+                  {{ t.price_card.toLocaleString() }}<small class="text-muted fw-normal">円</small>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 第二希望席 -->
+        <div class="mb-3">
+          <label class="form-label small text-muted">第二希望席（任意）</label>
+          <div class="d-flex flex-column gap-2">
+            <button
+              v-for="t in secondChoiceTiers"
+              :key="t.id"
+              type="button"
+              class="card text-start border"
+              :class="{
+                'border-2': secondChoiceTierId === t.id,
+                'bg-mogi-light': secondChoiceTierId === t.id,
+              }"
+              :style="secondChoiceTierId === t.id ? 'border-color: var(--mogi-orange) !important' : ''"
+              @click="selectSecondChoice(t.id)"
+            >
+              <div class="card-body py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <IconArmchair :size="20" class="text-mogi" />
+                  <div class="fw-bold">{{ t.name }}</div>
+                </div>
+                <div class="fw-bold">
+                  {{ t.price_card.toLocaleString() }}<small class="text-muted fw-normal">円</small>
+                </div>
+              </div>
+            </button>
+          </div>
+          <div class="form-text small">もう一度押すと選択解除できます</div>
+        </div>
+
+        <!-- どの席でも可 -->
+        <div class="mb-3">
+          <div class="form-check">
+            <input
+              id="allow-any-seat"
+              class="form-check-input"
+              type="checkbox"
+              v-model="allowAnySeat"
+            />
+            <label class="form-check-label small" for="allow-any-seat">
+              希望席が取れない場合、どの席でもご案内可能
+            </label>
+          </div>
+        </div>
+      </template>
 
       <!-- 枚数 -->
       <div class="mb-3">

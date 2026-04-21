@@ -91,3 +91,9 @@ export async function staffWalkIn(payload) {
   const { data } = await client.post('/staff/reservations/walk-in/', payload)
   return data
 }
+
+export async function staffPerformanceSummary() {
+  if (USE_MOCK) return []
+  const { data } = await client.get('/staff/performance-summary/')
+  return data.results
+}

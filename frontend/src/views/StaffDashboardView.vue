@@ -5,6 +5,7 @@ import StaffSearchBar from '../components/staff/StaffSearchBar.vue'
 import StaffReservationRow from '../components/staff/StaffReservationRow.vue'
 import StaffApplicationRow from '../components/staff/StaffApplicationRow.vue'
 import WalkInForm from '../components/staff/WalkInForm.vue'
+import PerformanceSummaryCards from '../components/staff/PerformanceSummaryCards.vue'
 
 const staff = useStaffActions()
 
@@ -13,6 +14,7 @@ const activeTab = ref('reservations')
 
 onMounted(async () => {
   await staff.loadPerformances()
+  staff.loadPerformanceSummaries()
   staff.search()
 })
 
@@ -55,13 +57,16 @@ async function handleWalkIn(data) {
   <div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h4 mb-0">受付</h1>
-      <button
-        v-if="activeTab === 'reservations'"
-        class="btn btn-sm btn-outline-dark"
-        @click="showWalkIn = !showWalkIn"
-      >
-        {{ showWalkIn ? '閉じる' : '当日券登録' }}
-      </button>
+      <div class="d-flex gap-2">
+        <RouterLink to="/manage/sales" class="btn btn-sm btn-outline-secondary">売上サマリー</RouterLink>
+        <button
+          v-if="activeTab === 'reservations'"
+          class="btn btn-sm btn-outline-dark"
+          @click="showWalkIn = !showWalkIn"
+        >
+          {{ showWalkIn ? '閉じる' : '当日券登録' }}
+        </button>
+      </div>
     </div>
 
     <!-- タブ切替 -->
@@ -108,6 +113,9 @@ async function handleWalkIn(data) {
 
     <!-- ===== 予約タブ ===== -->
     <template v-if="activeTab === 'reservations'">
+    <!-- 公演別サマリーカード（上段: 運営状況） -->
+    <PerformanceSummaryCards :summaries="staff.performanceSummaries.value" />
+
     <!-- 検索バー -->
     <StaffSearchBar
       :search-query="staff.searchQuery.value"
@@ -120,13 +128,27 @@ async function handleWalkIn(data) {
       @search="staff.search()"
     />
 
-    <!-- 集計 -->
+    <!-- 集計（上段: 当日運営の主要数値） -->
     <div class="row g-2 mb-2">
       <div class="col-auto">
-        <span class="badge bg-dark">{{ staff.summary.value.count }}件 / {{ staff.summary.value.total }}枚</span>
+        <span class="badge bg-dark">予約 {{ staff.summary.value.count }}件</span>
       </div>
       <div class="col-auto">
-        <span class="badge bg-success">入場 {{ staff.summary.value.checkedIn }}</span>
+        <span class="badge bg-dark">総枚数 {{ staff.summary.value.total }}</span>
+      </div>
+      <div class="col-auto">
+        <span class="badge bg-success">来場済み {{ staff.summary.value.checkedIn }}</span>
+      </div>
+      <div class="col-auto">
+        <span class="badge bg-secondary">未来場 {{ staff.summary.value.notCheckedIn }}</span>
+      </div>
+      <div class="col-auto">
+        <span class="badge bg-info text-dark">
+          残席 {{ staff.summary.value.remaining === null ? '—' : staff.summary.value.remaining }}
+        </span>
+      </div>
+      <div class="col-auto">
+        <span class="badge bg-primary">売上概算 ¥{{ staff.summary.value.revenueEstimate.toLocaleString() }}</span>
       </div>
       <div class="col-auto" v-if="staff.summary.value.unpaid > 0">
         <span class="badge bg-warning text-dark">当日精算 {{ staff.summary.value.unpaid }}</span>

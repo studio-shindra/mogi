@@ -19,7 +19,7 @@ function price(tier) {
 
 const maxQuantity = computed(() => {
   if (!props.selectedTier) return 1
-  return Math.min(props.selectedTier.remaining ?? props.selectedTier.capacity, 10)
+  return Math.min(props.selectedTier.remaining ?? props.selectedTier.capacity, 4)
 })
 
 function tierAvailability(tier) {

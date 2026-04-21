@@ -13,9 +13,20 @@ const routes = [
     component: () => import('../views/MyTicketView.vue'),
   },
   {
-    path: '/staff',
-    name: 'staff-dashboard',
+    path: '/manage/login',
+    name: 'manage-login',
+    component: () => import('../views/ManageLoginView.vue'),
+  },
+  {
+    path: '/manage',
+    name: 'manage-dashboard',
     component: () => import('../views/StaffDashboardView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/manage/sales',
+    name: 'manage-sales',
+    component: () => import('../views/ManageSalesView.vue'),
     meta: { requiresAuth: true },
   },
   {
@@ -72,13 +83,12 @@ router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true
 
   try {
-    await client.get('/staff/reservations/', { params: { search: '__auth_check__' } })
-    return true
+    const res = await client.get('/auth/me/')
+    if (res.data?.is_staff) return true
+    return { name: 'manage-login', query: { next: to.fullPath } }
   } catch (e) {
     if (e.response?.status === 401 || e.response?.status === 403) {
-      const loginUrl = '/admin/login/?next=' + encodeURIComponent(to.fullPath)
-      window.location.href = loginUrl
-      return false
+      return { name: 'manage-login', query: { next: to.fullPath } }
     }
     return true
   }

@@ -20,15 +20,17 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// 401/403 レスポンス時にログイン画面へリダイレクト（staff ページのみ）
+// 401/403 レスポンス時にログイン画面へリダイレクト（/manage 配下のみ、ログイン画面自体は除外）
 client.interceptors.response.use(
   (response) => response,
   (error) => {
+    const path = window.location.pathname
     if (
       (error.response?.status === 401 || error.response?.status === 403) &&
-      window.location.pathname.startsWith('/staff')
+      path.startsWith('/manage') &&
+      path !== '/manage/login'
     ) {
-      window.location.href = '/admin/login/?next=' + encodeURIComponent(window.location.pathname)
+      window.location.href = '/manage/login?next=' + encodeURIComponent(path)
     }
     return Promise.reject(error)
   },

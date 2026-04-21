@@ -8,6 +8,7 @@ import {
   staffListApplications,
   staffConfirmApplication,
   staffRejectApplication,
+  staffPerformanceSummary,
 } from '../api/reservations.js'
 import { fetchEvents, fetchEventDetail } from '../api/events.js'
 
@@ -30,6 +31,7 @@ export function useStaffActions() {
   const applicationsFanclubFilter = ref('')
   const loading = ref(false)
   const performances = ref([])
+  const performanceSummaries = ref([])
   const eventDetail = ref(null)
   const flash = ref(null) // { type: 'success' | 'error', message: string }
   let flashTimer = null
@@ -53,6 +55,15 @@ export function useStaffActions() {
     }
   }
 
+  // --- 公演別サマリー取得（サーバ集計） ---
+  async function loadPerformanceSummaries() {
+    try {
+      performanceSummaries.value = await staffPerformanceSummary()
+    } catch (e) {
+      console.error('公演別サマリー取得失敗:', e)
+    }
+  }
+
   // --- 検索 ---
   async function search() {
     loading.value = true
@@ -71,13 +82,37 @@ export function useStaffActions() {
   }
 
   // --- 集計 ---
+  // 母集団: status !== 'cancelled'（applied は API 側で除外済み）
   const summary = computed(() => {
     const list = reservations.value.filter((r) => r.status !== 'cancelled')
     const total = list.reduce((s, r) => s + r.quantity, 0)
     const checkedIn = list.filter((r) => r.checked_in).reduce((s, r) => s + r.quantity, 0)
+    const notCheckedIn = Math.max(total - checkedIn, 0)
     const unpaid = list
       .filter((r) => r.payment_status === 'unpaid')
       .reduce((s, r) => s + r.quantity, 0)
+
+    // 残席: 公演を選択中のときのみ算出。未選択なら null（UI側で「—」表示）。
+    let remaining = null
+    if (selectedPerformanceId.value) {
+      const perf = performances.value.find((p) => p.id === selectedPerformanceId.value)
+      if (perf && Array.isArray(perf.seat_tiers)) {
+        remaining = perf.seat_tiers.reduce(
+          (s, t) => s + (typeof t.remaining === 'number' ? t.remaining : 0),
+          0,
+        )
+      }
+    }
+
+    // 売上概算: 招待は0円、当日券は price_cash、それ以外は price_card
+    const revenueEstimate = list.reduce((s, r) => {
+      if (r.reservation_type === 'invite') return s
+      const price = r.sales_channel === 'walk_in'
+        ? (r.seat_tier?.price_cash ?? 0)
+        : (r.seat_tier?.price_card ?? 0)
+      return s + price * r.quantity
+    }, 0)
+
     const byChannel = {}
     for (const ch of SALES_CHANNELS) byChannel[ch.value] = 0
     for (const r of list) {
@@ -85,7 +120,16 @@ export function useStaffActions() {
         byChannel[r.sales_channel] += r.quantity
       }
     }
-    return { count: list.length, total, checkedIn, unpaid, byChannel }
+    return {
+      count: list.length,
+      total,
+      checkedIn,
+      notCheckedIn,
+      remaining,
+      revenueEstimate,
+      unpaid,
+      byChannel,
+    }
   })
 
   // --- 現金受領 ---
@@ -106,6 +150,7 @@ export function useStaffActions() {
       await staffCheckIn(reservation.id)
       reservation.checked_in = true
       setFlash('success', `${reservation.guest_name} さんの入場を記録しました`)
+      loadPerformanceSummaries()
     } catch (e) {
       console.error('入場処理失敗:', e)
       setFlash('error', `入場処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
@@ -157,6 +202,7 @@ export function useStaffActions() {
       await staffCancel(reservation.id)
       reservation.status = 'cancelled'
       setFlash('success', `${reservation.guest_name} さんの予約をキャンセルしました`)
+      loadPerformanceSummaries()
     } catch (e) {
       console.error('キャンセル失敗:', e)
       setFlash('error', `キャンセルに失敗しました: ${e.response?.data?.detail ?? e.message}`)
@@ -176,6 +222,7 @@ export function useStaffActions() {
       })
       reservations.value.unshift(created)
       setFlash('success', `${data.guestName} さんの当日券を登録しました`)
+      loadPerformanceSummaries()
       return created
     } catch (e) {
       console.error('当日券登録失敗:', e)
@@ -194,10 +241,12 @@ export function useStaffActions() {
     applicationsFanclubFilter,
     loading,
     performances,
+    performanceSummaries,
     eventDetail,
     flash,
     summary,
     loadPerformances,
+    loadPerformanceSummaries,
     search,
     loadApplications,
     confirmApplication,

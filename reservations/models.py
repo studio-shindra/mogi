@@ -119,6 +119,25 @@ class Reservation(models.Model):
     # --- 応募時の付帯情報 ---
     is_fanclub_member = models.BooleanField("FC会員", default=False)
 
+    # --- 応募時の希望席（確定席は seat_tier を使う） ---
+    first_choice_seat_tier = models.ForeignKey(
+        "events.SeatTier",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="第一希望席",
+        null=True,
+        blank=True,
+    )
+    second_choice_seat_tier = models.ForeignKey(
+        "events.SeatTier",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="第二希望席",
+        null=True,
+        blank=True,
+    )
+    allow_any_seat = models.BooleanField("どの席でも可", default=False)
+
     # --- タイムスタンプ ---
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

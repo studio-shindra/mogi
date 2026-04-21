@@ -134,7 +134,7 @@ class Command(BaseCommand):
 
             try:
                 quantity = int(quantity)
-                if quantity < 1 or quantity > 10:
+                if quantity < 1 or quantity > 4:
                     raise ValueError
             except ValueError:
                 errors.append(f"行{i}: quantity が不正です: {row.get('quantity')}")
