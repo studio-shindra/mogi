@@ -62,7 +62,7 @@ def send_reservation_email(reservation):
     lines += [
         "",
         "---",
-        event.organizer_name or "",
+        event.email_signature or "Mogi",
     ]
 
     body = "\n".join(lines)
@@ -97,7 +97,7 @@ def send_application_received_email(reservation):
     lines += [
         "",
         "---",
-        event.organizer_name or "",
+        event.email_signature or "Mogi",
     ]
 
     send_mail(
@@ -157,7 +157,7 @@ def send_application_won_email(reservation):
     lines += [
         "",
         "---",
-        event.organizer_name or "",
+        event.email_signature or "Mogi",
     ]
 
     send_mail(
@@ -208,7 +208,7 @@ def send_payment_complete_email(reservation):
         reservation_url,
         "",
         "---",
-        event.organizer_name or "",
+        event.email_signature or "Mogi",
     ]
 
     # 空行が連続しないよう空文字の行はそのまま残す

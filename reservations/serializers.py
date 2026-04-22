@@ -397,7 +397,7 @@ class ApplicationCreateSerializer(serializers.Serializer):
     allow_any_seat = serializers.BooleanField(required=False, default=False)
     quantity = serializers.IntegerField(min_value=1, max_value=4)
     guest_name = serializers.CharField(max_length=200)
-    guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    guest_email = serializers.EmailField()
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     memo = serializers.CharField(required=False, allow_blank=True, default="")
     link_token = serializers.CharField(required=False, allow_blank=True, default="")

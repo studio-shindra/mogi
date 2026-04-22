@@ -43,7 +43,7 @@ class EventAdmin(admin.ModelAdmin):
         (None, {"fields": ("title", "slug", "description", "cast", "flyer_image_url")}),
         ("公開設定", {"fields": ("public_entry_enabled",)}),
         ("会場", {"fields": ("venue_name", "venue_address")}),
-        ("主催者", {"fields": ("organizer_name", "organizer_email")}),
+        ("主催者", {"fields": ("organizer_name", "organizer_email", "email_signature")}),
     )
 
 

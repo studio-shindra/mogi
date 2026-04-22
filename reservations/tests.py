@@ -218,6 +218,7 @@ class ApplicationWithLinkTests(APITestCase):
             "first_choice_seat_tier_id": self.tier.id,
             "quantity": 2,
             "guest_name": "応募花子",
+            "guest_email": "hanako@example.com",
             "guest_phone": "090-1111-1111",
             "link_token": token,
         }
@@ -228,6 +229,14 @@ class ApplicationWithLinkTests(APITestCase):
         r = Reservation.objects.get(token=res.data["token"])
         self.assertEqual(r.status, "applied")
         self.assertEqual(r.sales_channel, "advance")
+
+    def test_application_requires_guest_email(self):
+        """応募は guest_email 必須。未指定は 400"""
+        payload = self._payload(self.link_b.token)
+        payload.pop("guest_email")
+        res = self.client.post("/api/applications/", payload, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("guest_email", res.data)
 
     def test_reservation_link_rejects_application(self):
         res_link = AccessLink.objects.create(
@@ -249,6 +258,7 @@ class ApplicationWithLinkTests(APITestCase):
                     "first_choice_seat_tier_id": self.tier.id,
                     "quantity": 1,
                     "guest_name": f"応募者{i}",
+                    "guest_email": f"applicant{i}@example.com",
                     "guest_phone": f"090-{i:04d}-0000",
                     "link_token": self.link_b.token,
                 },
@@ -424,6 +434,7 @@ class FanclubMemberTests(APITestCase):
             "first_choice_seat_tier_id": self.tier.id,
             "quantity": 1,
             "guest_name": "FC太郎" if is_fc else "一般花子",
+            "guest_email": "fc@example.com" if is_fc else "ippan@example.com",
             "guest_phone": "090-0000-0000",
             "link_token": self.link_b.token,
             "is_fanclub_member": is_fc,

@@ -7,6 +7,7 @@ class Event(models.Model):
     description = models.TextField("説明", blank=True)
     organizer_name = models.CharField("主催者名", max_length=200, blank=True)
     organizer_email = models.EmailField("主催者メール", blank=True)
+    email_signature = models.TextField("メール署名", blank=True)
     venue_name = models.CharField("会場名", max_length=200, blank=True)
     venue_address = models.CharField("会場住所", max_length=500, blank=True)
     cast = models.TextField("出演", blank=True)

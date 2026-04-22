@@ -32,6 +32,7 @@ const secondChoiceTiers = computed(() =>
 const canSubmit = computed(() => {
   if (!firstChoiceTierId.value) return false
   if (!guestName.value.trim()) return false
+  if (!guestEmail.value.trim()) return false
   if (!guestPhone.value.trim()) return false
   return quantity.value >= 1 && quantity.value <= 4
 })
@@ -220,8 +221,8 @@ async function handleSubmit() {
 
       <!-- メール -->
       <div class="mb-3">
-        <label class="form-label small text-muted">メールアドレス（任意）</label>
-        <input type="email" class="form-control" placeholder="example@email.com" v-model="guestEmail" />
+        <label class="form-label small text-muted">メールアドレス <span class="text-danger">*</span></label>
+        <input type="email" class="form-control" placeholder="example@email.com" v-model="guestEmail" required />
         <div class="form-text small">受付確認と結果連絡にメールをお送りします</div>
       </div>
 
