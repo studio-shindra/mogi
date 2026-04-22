@@ -490,7 +490,7 @@ async function handleSubmit() {
       </div>
 
       <!-- FC会員（応募モードのみ） -->
-      <div v-if="isApplication" class="mb-3">
+      <div v-if="isApplication && selectedPerformance?.show_fanclub_question" class="mb-3">
         <label class="form-label small text-muted">ゲストのファンクラブ会員ですか？</label>
         <div class="d-flex gap-2">
           <button
