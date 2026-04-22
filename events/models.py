@@ -34,6 +34,7 @@ class Performance(models.Model):
     label = models.CharField("公演名", max_length=200)
     starts_at = models.DateTimeField("開演")
     open_at = models.DateTimeField("開場")
+    show_fanclub_question = models.BooleanField("FC会員欄を表示", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

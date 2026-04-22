@@ -232,7 +232,7 @@ async function handleSubmit() {
       </div>
 
       <!-- FC会員 -->
-      <div class="mb-3">
+      <div v-if="performance.show_fanclub_question" class="mb-3">
         <label class="form-label small text-muted">ゲストのファンクラブ会員ですか？</label>
         <div class="d-flex gap-2">
           <button

@@ -24,7 +24,7 @@ class SeatTierResource(resources.ModelResource):
 class PerformanceInline(admin.TabularInline):
     model = Performance
     extra = 1
-    fields = ("label", "starts_at", "open_at")
+    fields = ("label", "starts_at", "open_at", "show_fanclub_question")
 
 
 class SeatTierInline(admin.TabularInline):
@@ -49,8 +49,8 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Performance)
 class PerformanceAdmin(admin.ModelAdmin):
-    list_display = ("event", "label", "starts_at")
-    list_filter = ("event",)
+    list_display = ("event", "label", "starts_at", "show_fanclub_question")
+    list_filter = ("event", "show_fanclub_question")
     inlines = [SeatTierInline]
 
 

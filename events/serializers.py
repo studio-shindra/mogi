@@ -48,6 +48,7 @@ class PerformanceSerializer(serializers.ModelSerializer):
             "label",
             "starts_at",
             "open_at",
+            "show_fanclub_question",
             "seat_tiers",
         ]
 
