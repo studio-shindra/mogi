@@ -59,11 +59,10 @@ def send_reservation_email(reservation):
             event.organizer_email,
         ]
 
-    lines += [
-        "",
-        "---",
-        event.email_signature or "Mogi",
-    ]
+    if event.email_signature:
+        lines += ["", event.email_signature]
+    else:
+        lines += ["", "---", "Mogi"]
 
     body = "\n".join(lines)
 
@@ -94,11 +93,10 @@ def send_application_received_email(reservation):
     if reservation.seat_tier:
         lines.append(f"席種: {reservation.seat_tier.name}")
     lines.append(f"枚数: {reservation.quantity}枚")
-    lines += [
-        "",
-        "---",
-        event.email_signature or "Mogi",
-    ]
+    if event.email_signature:
+        lines += ["", event.email_signature]
+    else:
+        lines += ["", "---", "Mogi"]
 
     send_mail(
         subject=subject,
@@ -154,11 +152,10 @@ def send_application_won_email(reservation):
             event.organizer_email,
         ]
 
-    lines += [
-        "",
-        "---",
-        event.email_signature or "Mogi",
-    ]
+    if event.email_signature:
+        lines += ["", event.email_signature]
+    else:
+        lines += ["", "---", "Mogi"]
 
     send_mail(
         subject=subject,
@@ -206,10 +203,11 @@ def send_payment_complete_email(reservation):
         "",
         "予約詳細は下記URLよりご確認いただけます。",
         reservation_url,
-        "",
-        "---",
-        event.email_signature or "Mogi",
     ]
+    if event.email_signature:
+        lines += ["", event.email_signature]
+    else:
+        lines += ["", "---", "Mogi"]
 
     # 空行が連続しないよう空文字の行はそのまま残す
     body = "\n".join(lines)
