@@ -66,7 +66,6 @@ const emit = defineEmits([
           @input="emit('update:guestPhone', $event.target.value)"
         />
       </div>
-      <div class="form-text small">チェックイン時の本人確認に使用します</div>
     </div>
   </div>
 </template>

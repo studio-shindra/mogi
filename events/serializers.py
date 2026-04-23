@@ -17,6 +17,7 @@ class SeatTierSerializer(serializers.ModelSerializer):
             "price_card",
             "price_cash",
             "sort_order",
+            "is_staff_only",
             "remaining",
         ]
 

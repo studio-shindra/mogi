@@ -19,4 +19,9 @@ urlpatterns = [
         name="performance-detail",
     ),
     path("seat-tiers/", views.seat_tiers_for_performance, name="seat-tiers-for-performance"),
+    path(
+        "staff/event-detail/<slug:slug>/",
+        views.staff_event_detail,
+        name="staff-event-detail",
+    ),
 ]

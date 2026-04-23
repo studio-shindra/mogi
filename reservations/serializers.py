@@ -249,6 +249,11 @@ class WalkInCreateSerializer(serializers.Serializer):
     guest_name = serializers.CharField(max_length=200)
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     memo = serializers.CharField(required=False, allow_blank=True, default="")
+    sales_channel = serializers.ChoiceField(
+        choices=Reservation.SalesChannel.choices,
+        required=False,
+        default=Reservation.SalesChannel.WALK_IN,
+    )
 
     def validate(self, data):
         from events.models import Performance
@@ -292,15 +297,24 @@ class WalkInCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         performance = validated_data.pop("_performance")
         seat_tier = validated_data.pop("_seat_tier")
+        sales_channel = validated_data.get(
+            "sales_channel", Reservation.SalesChannel.WALK_IN
+        )
+        # walk_in のみ即支払い済み、それ以外（事前予約）は当日精算扱い
+        payment_status = (
+            Reservation.PaymentStatus.PAID
+            if sales_channel == Reservation.SalesChannel.WALK_IN
+            else Reservation.PaymentStatus.UNPAID
+        )
 
         return Reservation.objects.create(
             performance=performance,
             seat_tier=seat_tier,
             quantity=validated_data["quantity"],
             reservation_type=Reservation.ReservationType.CASH,
-            sales_channel=Reservation.SalesChannel.WALK_IN,
+            sales_channel=sales_channel,
             status=Reservation.Status.CONFIRMED,
-            payment_status=Reservation.PaymentStatus.PAID,
+            payment_status=payment_status,
             guest_name=validated_data["guest_name"],
             guest_phone=validated_data.get("guest_phone", ""),
             memo=validated_data.get("memo", ""),

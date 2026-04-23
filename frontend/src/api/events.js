@@ -14,3 +14,9 @@ export async function fetchEventDetail(slug) {
   const { data } = await client.get(`/events/${slug}/`)
   return data
 }
+
+export async function fetchStaffEventDetail(slug) {
+  if (USE_MOCK) return mockEventDetail
+  const { data } = await client.get(`/staff/event-detail/${slug}/`)
+  return data
+}

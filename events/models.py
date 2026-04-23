@@ -55,6 +55,7 @@ class SeatTier(models.Model):
         ROW_C = "row_c", "C列"
         ROW_D_BENCH = "row_d_bench", "D列ベンチシート"
         ROW_E_BENCH = "row_e_bench", "E列ベンチシート"
+        INVITE = "invite", "招待"
 
     performance = models.ForeignKey(
         Performance,
@@ -72,6 +73,11 @@ class SeatTier(models.Model):
     price_card = models.PositiveIntegerField("前売り価格")
     price_cash = models.PositiveIntegerField("当日価格")
     sort_order = models.PositiveSmallIntegerField("表示順", default=0)
+    is_staff_only = models.BooleanField(
+        "スタッフ専用枠",
+        default=False,
+        help_text="True の席種は公開APIから除外され、スタッフ用画面のみで選択可能",
+    )
 
     class Meta:
         ordering = ["sort_order"]

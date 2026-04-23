@@ -30,6 +30,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/manage/booking',
+    name: 'manage-booking',
+    component: () => import('../views/StaffBookingView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/reservation/:token',
     name: 'reservation-confirm',
     component: () => import('../views/ReservationConfirmView.vue'),

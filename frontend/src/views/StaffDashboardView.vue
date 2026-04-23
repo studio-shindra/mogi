@@ -62,6 +62,13 @@ async function handleWalkIn(data) {
       <h1 class="h4 mb-0">受付</h1>
       <div class="d-flex gap-2">
         <RouterLink to="/manage/sales" class="btn btn-sm btn-outline-secondary">売上サマリー</RouterLink>
+        <RouterLink
+          v-if="activeTab === 'reservations'"
+          to="/manage/booking"
+          class="btn btn-sm btn-outline-primary"
+        >
+          予約登録
+        </RouterLink>
         <button
           v-if="activeTab === 'reservations'"
           class="btn btn-sm btn-outline-dark"

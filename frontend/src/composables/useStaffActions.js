@@ -211,24 +211,28 @@ export function useStaffActions() {
     }
   }
 
-  // --- 当日券作成 ---
+  // --- 当日券／事前予約作成 ---
   async function createWalkIn(data) {
+    const channel = data.salesChannel || 'walk_in'
+    const label = channel === 'walk_in' ? '当日券' : '予約'
     try {
-      const created = await staffWalkIn({
+      const payload = {
         performance_id: data.performanceId,
         seat_tier_id: data.seatTierId,
         quantity: data.quantity,
         guest_name: data.guestName,
         guest_phone: data.guestPhone || '',
         memo: data.memo || '',
-      })
+        sales_channel: channel,
+      }
+      const created = await staffWalkIn(payload)
       reservations.value.unshift(created)
-      setFlash('success', `${data.guestName} さんの当日券を登録しました`)
+      setFlash('success', `${data.guestName} さんの${label}を登録しました`)
       loadPerformanceSummaries()
       return created
     } catch (e) {
-      console.error('当日券登録失敗:', e)
-      setFlash('error', `当日券登録に失敗しました: ${e.response?.data?.detail ?? e.message}`)
+      console.error(`${label}登録失敗:`, e)
+      setFlash('error', `${label}登録に失敗しました: ${e.response?.data?.detail ?? e.message}`)
       throw e
     }
   }

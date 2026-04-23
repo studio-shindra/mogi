@@ -24,7 +24,7 @@ const typeLabel = { cash: '当日精算', invite: 'ご招待' }
 </script>
 
 <template>
-  <div class="container py-5" style="max-width: 640px; padding-top: 56px">
+  <div class="container pb-5" style="max-width: 640px; padding-top: 6rem">
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-mogi" role="status" />
     </div>

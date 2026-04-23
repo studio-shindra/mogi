@@ -17,6 +17,7 @@ class SeatTierResource(resources.ModelResource):
             "price_card",
             "price_cash",
             "sort_order",
+            "is_staff_only",
         )
         import_id_fields = ("id",)
 
@@ -30,7 +31,7 @@ class PerformanceInline(admin.TabularInline):
 class SeatTierInline(admin.TabularInline):
     model = SeatTier
     extra = 4
-    fields = ("code", "name", "capacity", "price_card", "price_cash", "sort_order")
+    fields = ("code", "name", "capacity", "price_card", "price_cash", "sort_order", "is_staff_only")
 
 
 @admin.register(Event)
@@ -57,5 +58,5 @@ class PerformanceAdmin(admin.ModelAdmin):
 @admin.register(SeatTier)
 class SeatTierAdmin(ImportExportModelAdmin):
     resource_classes = [SeatTierResource]
-    list_display = ("performance", "code", "name", "capacity", "price_card", "price_cash")
-    list_filter = ("performance__event", "code")
+    list_display = ("performance", "code", "name", "capacity", "price_card", "price_cash", "is_staff_only")
+    list_filter = ("performance__event", "code", "is_staff_only")
