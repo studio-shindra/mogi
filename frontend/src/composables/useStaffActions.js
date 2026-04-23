@@ -179,6 +179,7 @@ export function useStaffActions() {
       await staffConfirmApplication(application.id)
       applications.value = applications.value.filter((a) => a.id !== application.id)
       setFlash('success', `${application.guest_name} さんを当選処理しました`)
+      loadPerformanceSummaries()
     } catch (e) {
       console.error('当選処理失敗:', e)
       setFlash('error', `当選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
@@ -190,6 +191,7 @@ export function useStaffActions() {
       await staffRejectApplication(application.id)
       applications.value = applications.value.filter((a) => a.id !== application.id)
       setFlash('success', `${application.guest_name} さんを落選処理しました`)
+      loadPerformanceSummaries()
     } catch (e) {
       console.error('落選処理失敗:', e)
       setFlash('error', `落選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)

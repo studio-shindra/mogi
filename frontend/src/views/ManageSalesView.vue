@@ -54,6 +54,8 @@ const totals = computed(() => {
     not_checked_in: 0,
     capacity: 0,
     remaining: 0,
+    application_count: 0,
+    application_quantity: 0,
   }
   for (const s of summaries.value) {
     base.count += s.count || 0
@@ -67,6 +69,8 @@ const totals = computed(() => {
     base.not_checked_in += s.not_checked_in || 0
     base.capacity += s.capacity || 0
     base.remaining += s.remaining || 0
+    base.application_count += s.application_count || 0
+    base.application_quantity += s.application_quantity || 0
   }
   return base
 })
@@ -89,7 +93,7 @@ const totals = computed(() => {
 
     <!-- 上段: 全体サマリーカード -->
     <div class="row g-2 mb-4">
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="text-muted small">総予約件数</div>
@@ -97,7 +101,7 @@ const totals = computed(() => {
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="text-muted small">総枚数</div>
@@ -105,7 +109,7 @@ const totals = computed(() => {
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100 border-primary">
           <div class="card-body p-3">
             <div class="text-muted small">売上概算</div>
@@ -113,7 +117,7 @@ const totals = computed(() => {
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="text-muted small">当日精算</div>
@@ -121,7 +125,7 @@ const totals = computed(() => {
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="text-muted small">招待</div>
@@ -129,11 +133,22 @@ const totals = computed(() => {
           </div>
         </div>
       </div>
-      <div class="col-6 col-md-4 col-lg-2">
+      <div class="col-6 col-md-4 col-lg">
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="text-muted small">来場済み</div>
             <div class="fs-4 fw-bold">{{ totals.checked_in.toLocaleString() }}<span class="fs-6 text-muted">枚</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-lg">
+        <div class="card h-100">
+          <div class="card-body p-3">
+            <div class="text-muted small">応募（抽選待ち）</div>
+            <div class="fs-4 fw-bold">
+              {{ totals.application_quantity.toLocaleString() }}<span class="fs-6 text-muted">枚</span>
+            </div>
+            <div class="text-muted small">{{ totals.application_count.toLocaleString() }}件</div>
           </div>
         </div>
       </div>
@@ -158,6 +173,7 @@ const totals = computed(() => {
             <th rowspan="2" class="align-middle">当日精算</th>
             <th colspan="2" class="text-center">入場（枚）</th>
             <th rowspan="2" class="align-middle">残席</th>
+            <th rowspan="2" class="align-middle">応募<br /><span class="small text-muted">抽選待ち</span></th>
           </tr>
           <tr class="text-center small">
             <th>前売</th>
@@ -188,6 +204,10 @@ const totals = computed(() => {
             <td class="text-end">{{ (s.checked_in ?? 0).toLocaleString() }}</td>
             <td class="text-end fw-bold">{{ (s.not_checked_in ?? 0).toLocaleString() }}</td>
             <td class="text-end">{{ (s.remaining ?? 0).toLocaleString() }}</td>
+            <td class="text-end">
+              <div>{{ (s.application_quantity ?? 0).toLocaleString() }}<span class="small text-muted">枚</span></div>
+              <div class="small text-muted">{{ (s.application_count ?? 0).toLocaleString() }}件</div>
+            </td>
           </tr>
         </tbody>
         <tfoot>
@@ -206,6 +226,10 @@ const totals = computed(() => {
             <td class="text-end">{{ totals.checked_in.toLocaleString() }}</td>
             <td class="text-end">{{ totals.not_checked_in.toLocaleString() }}</td>
             <td class="text-end">{{ totals.remaining.toLocaleString() }}</td>
+            <td class="text-end">
+              <div>{{ totals.application_quantity.toLocaleString() }}<span class="small text-muted">枚</span></div>
+              <div class="small text-muted">{{ totals.application_count.toLocaleString() }}件</div>
+            </td>
           </tr>
         </tfoot>
       </table>
@@ -216,7 +240,7 @@ const totals = computed(() => {
     <!-- 注記 -->
     <div class="text-muted small">
       <p class="mb-1">※ 売上概算は「招待=0円 / 当日券=price_cash / その他=price_card」で算出した概算値です。</p>
-      <p class="mb-1">※ 集計対象は applied / cancelled を除いた予約です。</p>
+      <p class="mb-1">※ 集計対象は applied / cancelled を除いた予約です（応募列のみ applied を集計）。</p>
       <p class="mb-0">※ 当日精算は `payment_status=unpaid` の件数です。</p>
     </div>
   </div>

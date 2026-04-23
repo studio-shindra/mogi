@@ -46,20 +46,12 @@ const sortedSummaries = computed(() => {
         <div class="text-muted" style="font-size: 0.75rem;">{{ s.label }}</div>
         <hr class="my-2" />
         <div class="d-flex justify-content-between small">
-          <span class="text-muted">総席数</span>
-          <span>{{ s.capacity }}</span>
-        </div>
-        <div class="d-flex justify-content-between small">
-          <span class="text-muted">残席</span>
-          <span>{{ s.remaining }}</span>
-        </div>
-        <div class="d-flex justify-content-between small">
-          <span class="text-muted">入場</span>
-          <span>{{ s.checked_in }}</span>
+          <span class="text-muted">応募人数</span>
+          <span>{{ s.application_count ?? 0 }}</span>
         </div>
         <div class="d-flex justify-content-between align-items-baseline mt-2 border-top pt-2">
-          <span class="fw-bold">未入場</span>
-          <span class="fw-bold fs-4 text-danger">{{ s.not_checked_in }}</span>
+          <span class="fw-bold">合計枚数</span>
+          <span class="fw-bold fs-4 text-primary">{{ s.application_quantity ?? 0 }}</span>
         </div>
       </div>
     </div>

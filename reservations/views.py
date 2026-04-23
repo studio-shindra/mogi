@@ -258,6 +258,13 @@ def staff_performance_summary(request):
                 price = getattr(r.seat_tier, "price_card", 0) or 0
                 revenue_estimate += price * r.quantity
 
+        # 応募タブ用: status=applied の件数と合計枚数
+        application_qs = Reservation.objects.filter(
+            performance=perf, status=Reservation.Status.APPLIED,
+        )
+        application_count = application_qs.count()
+        application_quantity = application_qs.aggregate(s=Sum("quantity"))["s"] or 0
+
         capacity = perf.capacity_sum or 0
         results.append({
             "performance_id": perf.id,
@@ -275,6 +282,8 @@ def staff_performance_summary(request):
             "invite_qty": invite_qty,
             "advance_qty": advance_qty,
             "walk_in_qty": walk_in_qty,
+            "application_count": application_count,
+            "application_quantity": application_quantity,
         })
 
     return Response({"results": results})

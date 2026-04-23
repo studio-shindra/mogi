@@ -6,6 +6,9 @@ import StaffReservationRow from '../components/staff/StaffReservationRow.vue'
 import StaffApplicationRow from '../components/staff/StaffApplicationRow.vue'
 import WalkInForm from '../components/staff/WalkInForm.vue'
 import PerformanceSummaryCards from '../components/staff/PerformanceSummaryCards.vue'
+import PerformanceApplicationSummaryCards from '../components/staff/PerformanceApplicationSummaryCards.vue'
+import TotalReservationSummaryCard from '../components/staff/TotalReservationSummaryCard.vue'
+import TotalApplicationSummaryCard from '../components/staff/TotalApplicationSummaryCard.vue'
 
 const staff = useStaffActions()
 
@@ -113,8 +116,12 @@ async function handleWalkIn(data) {
 
     <!-- ===== 予約タブ ===== -->
     <template v-if="activeTab === 'reservations'">
-    <!-- 公演別サマリーカード（上段: 運営状況） -->
-    <PerformanceSummaryCards :summaries="staff.performanceSummaries.value" />
+    <!-- 公演別サマリーカード（上段: 運営状況）+ 左端に全公演合計 -->
+    <PerformanceSummaryCards :summaries="staff.performanceSummaries.value">
+      <template #leading>
+        <TotalReservationSummaryCard :summaries="staff.performanceSummaries.value" />
+      </template>
+    </PerformanceSummaryCards>
 
     <!-- 検索バー -->
     <StaffSearchBar
@@ -211,6 +218,13 @@ async function handleWalkIn(data) {
       <p class="small text-muted mb-3">
         二次先行応募の一覧です。当選ボタンで予約確定へ寄せます（在庫確認あり）。
       </p>
+
+      <!-- 公演別 応募サマリーカード（左端に全公演合計） -->
+      <PerformanceApplicationSummaryCards :summaries="staff.performanceSummaries.value">
+        <template #leading>
+          <TotalApplicationSummaryCard :summaries="staff.performanceSummaries.value" />
+        </template>
+      </PerformanceApplicationSummaryCards>
 
       <!-- FC会員フィルタ -->
       <div class="d-flex gap-2 mb-3">
