@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ReservationStatusBadge from '../reservation/ReservationStatusBadge.vue'
+import { formatJstDateTime } from '../../utils/datetime.js'
 
 const props = defineProps({
   reservation: { type: Object, required: true },
 })
 
-const emit = defineEmits(['mark-paid', 'check-in', 'cancel'])
+const emit = defineEmits(['mark-paid', 'check-in', 'cancel', 'row-click'])
 
 const acting = ref(false)
 
@@ -51,11 +52,19 @@ async function onCancel() {
 </script>
 
 <template>
-  <tr :class="{ 'text-muted': reservation.status === 'cancelled' }">
+  <tr
+    :class="{ 'text-muted': reservation.status === 'cancelled' }"
+    style="cursor: pointer"
+    @click="emit('row-click', reservation)"
+  >
     <!-- 名前 -->
     <td>
       <div class="fw-bold">{{ reservation.guest_name }}</div>
       <small class="text-muted">{{ reservation.guest_phone }}</small>
+    </td>
+    <!-- 日程 -->
+    <td class="text-nowrap">
+      <small>{{ formatJstDateTime(reservation.performance?.starts_at) }}</small>
     </td>
     <!-- 席種・枚数 -->
     <td>
@@ -89,7 +98,7 @@ async function onCancel() {
       <small class="text-muted" style="white-space: pre-line">{{ reservation.memo }}</small>
     </td>
     <!-- 操作 -->
-    <td class="text-end text-nowrap">
+    <td class="text-end text-nowrap" @click.stop>
       <!-- 現金受領 -->
       <button
         v-if="reservation.payment_status === 'unpaid' && reservation.status === 'confirmed'"

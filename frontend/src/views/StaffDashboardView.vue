@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useStaffActions, SALES_CHANNELS } from '../composables/useStaffActions.js'
 import StaffSearchBar from '../components/staff/StaffSearchBar.vue'
 import StaffReservationRow from '../components/staff/StaffReservationRow.vue'
+import ReservationDetailModal from '../components/staff/ReservationDetailModal.vue'
 import StaffApplicationRow from '../components/staff/StaffApplicationRow.vue'
 import WalkInForm from '../components/staff/WalkInForm.vue'
 import PerformanceSummaryCards from '../components/staff/PerformanceSummaryCards.vue'
@@ -14,6 +15,51 @@ const staff = useStaffActions()
 
 const showWalkIn = ref(false)
 const activeTab = ref('reservations')
+const selectedReservation = ref(null)
+
+// 予約一覧のソート状態（''=申込順デフォルト）
+const sortKey = ref('')
+const sortDir = ref('asc')
+
+const sortGetters = {
+  name: (r) => r.guest_name || '',
+  date: (r) => r.performance?.starts_at || '',
+  seat: (r) => r.seat_tier?.name || '',
+  channel: (r) => r.sales_channel || '',
+  type: (r) => r.reservation_type || '',
+  status: (r) => r.status || '',
+}
+
+function toggleSort(key) {
+  if (sortKey.value !== key) {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  } else if (sortDir.value === 'asc') {
+    sortDir.value = 'desc'
+  } else {
+    sortKey.value = ''
+    sortDir.value = 'asc'
+  }
+}
+
+function sortArrow(key) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ↑' : ' ↓'
+}
+
+const sortedReservations = computed(() => {
+  const list = staff.reservations.value
+  if (!sortKey.value) return list
+  const g = sortGetters[sortKey.value]
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  return [...list].sort((a, b) => {
+    const va = g(a)
+    const vb = g(b)
+    if (va < vb) return -1 * dir
+    if (va > vb) return 1 * dir
+    return 0
+  })
+})
 
 onMounted(async () => {
   await staff.loadPerformances()
@@ -192,23 +238,25 @@ async function handleWalkIn(data) {
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th>名前</th>
-            <th>席種</th>
-            <th>区分</th>
-            <th>種別</th>
-            <th>状態</th>
+            <th role="button" class="user-select-none" @click="toggleSort('name')">名前{{ sortArrow('name') }}</th>
+            <th role="button" class="user-select-none" @click="toggleSort('date')">日程{{ sortArrow('date') }}</th>
+            <th role="button" class="user-select-none" @click="toggleSort('seat')">席種{{ sortArrow('seat') }}</th>
+            <th role="button" class="user-select-none" @click="toggleSort('channel')">区分{{ sortArrow('channel') }}</th>
+            <th role="button" class="user-select-none" @click="toggleSort('type')">種別{{ sortArrow('type') }}</th>
+            <th role="button" class="user-select-none" @click="toggleSort('status')">状態{{ sortArrow('status') }}</th>
             <th>メモ</th>
             <th class="text-end">操作</th>
           </tr>
         </thead>
         <tbody>
           <StaffReservationRow
-            v-for="r in staff.reservations.value"
+            v-for="r in sortedReservations"
             :key="r.id"
             :reservation="r"
             @mark-paid="handleMarkPaid"
             @check-in="handleCheckIn"
             @cancel="handleCancel"
+            @row-click="selectedReservation = $event"
           />
         </tbody>
       </table>
@@ -289,5 +337,11 @@ async function handleWalkIn(data) {
         応募がありません
       </div>
     </template>
+
+    <!-- 予約詳細モーダル -->
+    <ReservationDetailModal
+      :reservation="selectedReservation"
+      @close="selectedReservation = null"
+    />
   </div>
 </template>
