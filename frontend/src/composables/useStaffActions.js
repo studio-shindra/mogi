@@ -104,9 +104,10 @@ export function useStaffActions() {
       }
     }
 
-    // 売上概算: 招待は0円、当日券は price_cash、それ以外は price_card
+    // 売上概算: 招待（reservation_type=invite もしくは sales_channel=invite）は0円、
+    // 当日券は price_cash、それ以外は price_card
     const revenueEstimate = list.reduce((s, r) => {
-      if (r.reservation_type === 'invite') return s
+      if (r.reservation_type === 'invite' || r.sales_channel === 'invite') return s
       const price = r.sales_channel === 'walk_in'
         ? (r.seat_tier?.price_cash ?? 0)
         : (r.seat_tier?.price_card ?? 0)

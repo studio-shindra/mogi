@@ -39,13 +39,13 @@ function setFlash(type, message) {
 const selectedPerf = computed(() =>
   performances.value.find((p) => p.id === performanceId.value),
 )
-// 通常席種は code 辞書順（row_a→row_b→…→row_e_bench）、招待は末尾に並べる
+// 通常席種は code 辞書順（row_a→row_b→…→row_e_bench）、関係者席は末尾に並べる
 const seatTiers = computed(() => {
   const tiers = selectedPerf.value?.seat_tiers ?? []
   return [...tiers].sort((a, b) => {
-    const aInvite = a.code === 'invite'
-    const bInvite = b.code === 'invite'
-    if (aInvite !== bInvite) return aInvite ? 1 : -1
+    const aStaff = a.code === 'staff_seat'
+    const bStaff = b.code === 'staff_seat'
+    if (aStaff !== bStaff) return aStaff ? 1 : -1
     return (a.code || '').localeCompare(b.code || '')
   })
 })
@@ -54,22 +54,20 @@ const selectedTier = computed(() =>
 )
 
 function tierLabel(tier) {
-  // 「A列」「D列ベンチシート」「招待」の先頭1文字を取り出して A / B / C / D / E / 招
+  // 「A列」「D列ベンチシート」「関係者席」の先頭1文字を取り出して A / B / C / D / E / 関
   return (tier.name || '').charAt(0) || tier.code
 }
 
 function selectTier(tier) {
+  // 席種選択で販売区分は自動変更しない。
+  // （関係者席でも有料・無料の両用途があるため、販売区分はユーザーが都度選ぶ）
   seatTierId.value = tier.id
-  if (tier.code === 'invite') {
-    // 招待席種を選んだら販売区分を「招待」に自動切替
-    bookingMode.value = 'advance'
-    salesChannel.value = 'invite'
-  }
 }
 
-// 事前は前売り価格、当日は当日価格を採用
+// 販売区分=招待は0円、事前は前売り価格、当日は当日価格を採用
 const unitPrice = computed(() => {
   if (!selectedTier.value) return 0
+  if (salesChannel.value === 'invite') return 0
   return bookingMode.value === 'walk_in'
     ? selectedTier.value.price_cash
     : selectedTier.value.price_card
@@ -136,6 +134,7 @@ async function handleSubmit() {
     })
     setFlash('success', `${guestName.value.trim()} さんの予約を登録しました`)
     resetForm()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
     console.error('予約登録失敗:', e)
     const detail = e.response?.data

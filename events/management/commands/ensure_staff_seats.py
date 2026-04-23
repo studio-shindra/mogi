@@ -5,14 +5,14 @@ from events.models import Performance, SeatTier
 
 
 class Command(BaseCommand):
-    help = "各公演に招待枠 SeatTier (is_staff_only=True) を1件ずつ作成する。既存ならスキップ。"
+    help = "各公演に関係者席 SeatTier (is_staff_only=True) を1件ずつ作成する。既存ならスキップ。"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--capacity",
             type=int,
             default=7,
-            help="招待枠の定員（デフォルト 7）",
+            help="関係者席の定員（デフォルト 7）",
         )
         parser.add_argument(
             "--sort-order",
@@ -23,8 +23,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--name",
             type=str,
-            default="招待",
-            help="席種表示名（デフォルト '招待'）",
+            default="関係者席",
+            help="席種表示名（デフォルト '関係者席'）",
+        )
+        parser.add_argument(
+            "--price",
+            type=int,
+            default=4800,
+            help="料金（デフォルト 4800。price_card / price_cash に同額を設定）",
         )
 
     @transaction.atomic
@@ -32,26 +38,27 @@ class Command(BaseCommand):
         capacity = options["capacity"]
         sort_order = options["sort_order"]
         name = options["name"]
+        price = options["price"]
 
         created = 0
         skipped = 0
         for perf in Performance.objects.all():
             exists = SeatTier.objects.filter(
                 performance=perf,
-                code=SeatTier.TierCode.INVITE,
+                code=SeatTier.TierCode.STAFF_SEAT,
             ).exists()
             if exists:
                 skipped += 1
-                self.stdout.write(f"- skip: {perf} (既に招待枠あり)")
+                self.stdout.write(f"- skip: {perf} (既に関係者席あり)")
                 continue
 
             SeatTier.objects.create(
                 performance=perf,
-                code=SeatTier.TierCode.INVITE,
+                code=SeatTier.TierCode.STAFF_SEAT,
                 name=name,
                 capacity=capacity,
-                price_card=0,
-                price_cash=0,
+                price_card=price,
+                price_cash=price,
                 sort_order=sort_order,
                 is_staff_only=True,
             )

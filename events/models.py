@@ -55,7 +55,7 @@ class SeatTier(models.Model):
         ROW_C = "row_c", "C列"
         ROW_D_BENCH = "row_d_bench", "D列ベンチシート"
         ROW_E_BENCH = "row_e_bench", "E列ベンチシート"
-        INVITE = "invite", "招待"
+        STAFF_SEAT = "staff_seat", "関係者席"
 
     performance = models.ForeignKey(
         Performance,

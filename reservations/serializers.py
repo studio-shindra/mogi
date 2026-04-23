@@ -300,18 +300,28 @@ class WalkInCreateSerializer(serializers.Serializer):
         sales_channel = validated_data.get(
             "sales_channel", Reservation.SalesChannel.WALK_IN
         )
-        # walk_in のみ即支払い済み、それ以外（事前予約）は当日精算扱い
-        payment_status = (
-            Reservation.PaymentStatus.PAID
-            if sales_channel == Reservation.SalesChannel.WALK_IN
-            else Reservation.PaymentStatus.UNPAID
+        # walk_in / invite は支払い完了扱い（当日券は現金受領済み、招待は料金0で確定）
+        # それ以外（事前予約）は当日精算で unpaid
+        if sales_channel in (
+            Reservation.SalesChannel.WALK_IN,
+            Reservation.SalesChannel.INVITE,
+        ):
+            payment_status = Reservation.PaymentStatus.PAID
+        else:
+            payment_status = Reservation.PaymentStatus.UNPAID
+
+        # 招待区分は reservation_type も INVITE にして売上計算から外す
+        reservation_type = (
+            Reservation.ReservationType.INVITE
+            if sales_channel == Reservation.SalesChannel.INVITE
+            else Reservation.ReservationType.CASH
         )
 
         return Reservation.objects.create(
             performance=performance,
             seat_tier=seat_tier,
             quantity=validated_data["quantity"],
-            reservation_type=Reservation.ReservationType.CASH,
+            reservation_type=reservation_type,
             sales_channel=sales_channel,
             status=Reservation.Status.CONFIRMED,
             payment_status=payment_status,
