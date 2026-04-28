@@ -92,3 +92,9 @@ class SeatTier(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # 関係者席は常にスタッフ専用（公開APIから除外）
+        if self.code == self.TierCode.STAFF_SEAT:
+            self.is_staff_only = True
+        super().save(*args, **kwargs)
