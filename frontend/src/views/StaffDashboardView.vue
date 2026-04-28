@@ -61,6 +61,59 @@ const sortedReservations = computed(() => {
   })
 })
 
+// 応募一覧のソート状態（''=日程昇順＋応募順デフォルト）
+const appSortKey = ref('')
+const appSortDir = ref('asc')
+
+const appSortGetters = {
+  name: (a) => a.guest_name || '',
+  seat: (a) => a.first_choice_seat_tier?.name || '',
+  date: (a) => a.performance?.starts_at || '',
+}
+
+function appToggleSort(key) {
+  if (appSortKey.value !== key) {
+    appSortKey.value = key
+    appSortDir.value = 'asc'
+  } else if (appSortDir.value === 'asc') {
+    appSortDir.value = 'desc'
+  } else {
+    appSortKey.value = ''
+    appSortDir.value = 'asc'
+  }
+}
+
+function appSortArrow(key) {
+  if (appSortKey.value !== key) return ''
+  return appSortDir.value === 'asc' ? ' ↑' : ' ↓'
+}
+
+const sortedApplications = computed(() => {
+  const list = staff.applications.value
+  // デフォルト: 日程昇順 → 元の応募順
+  if (!appSortKey.value) {
+    return list
+      .map((a, i) => ({ a, i }))
+      .sort((x, y) => {
+        const da = x.a.performance?.starts_at || ''
+        const db = y.a.performance?.starts_at || ''
+        if (da < db) return -1
+        if (da > db) return 1
+        return x.i - y.i
+      })
+      .map((x) => x.a)
+  }
+  const g = appSortGetters[appSortKey.value]
+  const dir = appSortDir.value === 'asc' ? 1 : -1
+  return [...list].sort((a, b) => {
+    const va = g(a)
+    const vb = g(b)
+    if (va < vb) return -1 * dir
+    if (va > vb) return 1 * dir
+    return 0
+  })
+})
+
 onMounted(async () => {
   await staff.loadPerformances()
   staff.loadPerformanceSummaries()
@@ -315,16 +368,16 @@ async function handleWalkIn(data) {
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th>応募者</th>
-              <th>希望席</th>
-              <th>公演</th>
+              <th role="button" class="user-select-none" @click="appToggleSort('name')">応募者{{ appSortArrow('name') }}</th>
+              <th role="button" class="user-select-none" @click="appToggleSort('seat')">希望席{{ appSortArrow('seat') }}</th>
+              <th role="button" class="user-select-none" @click="appToggleSort('date')">公演{{ appSortArrow('date') }}</th>
               <th>備考</th>
               <th class="text-end">操作</th>
             </tr>
           </thead>
           <tbody>
             <StaffApplicationRow
-              v-for="a in staff.applications.value"
+              v-for="a in sortedApplications"
               :key="a.id"
               :application="a"
               :seat-tiers="staff.getSeatTiersFor(a.performance?.id)"

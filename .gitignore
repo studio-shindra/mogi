@@ -11,3 +11,4 @@ venv/
 # Local Netlify folder
 .netlify
 docs/
+reservations/management/commands/seed_sample_applications.py
