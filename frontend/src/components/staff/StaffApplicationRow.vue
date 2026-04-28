@@ -1,20 +1,49 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   application: { type: Object, required: true },
+  seatTiers: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['confirm', 'reject'])
 
 const acting = ref(false)
+const choosing = ref(false)
+const selectedSeatTierId = ref(null)
 
-async function onConfirm() {
-  const name = props.application.guest_name
-  if (!window.confirm(`${name} さんを当選処理（予約確定）しますか？\n在庫が不足している場合は失敗します。`)) return
+const sortedSeatTiers = computed(() => {
+  return [...props.seatTiers].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+})
+
+function pickInitialSeatTierId() {
+  const first = props.application.first_choice_seat_tier
+  const second = props.application.second_choice_seat_tier
+  const exists = (id) => id && props.seatTiers.some((t) => t.id === id)
+  if (exists(first?.id)) return first.id
+  if (exists(second?.id)) return second.id
+  return null
+}
+
+function startConfirm() {
+  selectedSeatTierId.value = pickInitialSeatTierId()
+  choosing.value = true
+}
+
+function cancelConfirm() {
+  choosing.value = false
+  selectedSeatTierId.value = null
+}
+
+async function submitConfirm() {
+  if (!selectedSeatTierId.value) return
   acting.value = true
-  emit('confirm', props.application)
-  setTimeout(() => (acting.value = false), 500)
+  emit('confirm', props.application, selectedSeatTierId.value)
+  setTimeout(() => {
+    acting.value = false
+    choosing.value = false
+    selectedSeatTierId.value = null
+  }, 500)
 }
 
 async function onReject() {
@@ -61,20 +90,56 @@ async function onReject() {
       <small class="text-muted" style="white-space: pre-line">{{ application.memo }}</small>
     </td>
     <td class="text-end text-nowrap">
-      <button
-        class="btn btn-sm btn-success me-1"
-        :disabled="acting"
-        @click="onConfirm"
-      >
-        当選
-      </button>
-      <button
-        class="btn btn-sm btn-outline-danger"
-        :disabled="acting"
-        @click="onReject"
-      >
-        落選
-      </button>
+      <template v-if="!choosing">
+        <button
+          class="btn btn-sm btn-success me-1"
+          :disabled="acting"
+          @click="startConfirm"
+        >
+          当選
+        </button>
+        <button
+          class="btn btn-sm btn-outline-danger"
+          :disabled="acting"
+          @click="onReject"
+        >
+          落選
+        </button>
+      </template>
+      <template v-else>
+        <div class="d-flex align-items-center justify-content-end gap-1">
+          <select
+            v-model="selectedSeatTierId"
+            class="form-select form-select-sm"
+            style="width: auto; min-width: 9rem"
+            :disabled="acting"
+          >
+            <option :value="null" disabled>席種を選択</option>
+            <option
+              v-for="t in sortedSeatTiers"
+              :key="t.id"
+              :value="t.id"
+              :disabled="(t.remaining ?? 0) <= 0"
+            >
+              {{ t.name }}（残{{ t.remaining ?? 0 }}）
+            </option>
+          </select>
+          <button
+            class="btn btn-sm btn-success"
+            :disabled="acting || !selectedSeatTierId"
+            @click="submitConfirm"
+          >
+            確定
+          </button>
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="acting"
+            @click="cancelConfirm"
+          >
+            キャンセル
+          </button>
+        </div>
+      </template>
     </td>
   </tr>
 </template>

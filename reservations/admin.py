@@ -152,6 +152,7 @@ class ReservationAdmin(admin.ModelAdmin):
     confirm_applications.short_description = "選択した応募を当選処理する"
 
     def reject_applications(self, request, queryset):
+        from .emails import send_application_lost_email
         now = timezone.now()
         stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
         rejected_count = 0
@@ -162,6 +163,11 @@ class ReservationAdmin(admin.ModelAdmin):
             reservation.memo = f"{reservation.memo}\n{note}".strip() if reservation.memo else note
             reservation.status = Reservation.Status.CANCELLED
             reservation.save(update_fields=["status", "memo", "updated_at"])
+            if reservation.guest_email:
+                try:
+                    send_application_lost_email(reservation)
+                except Exception:
+                    messages.warning(request, f"#{reservation.pk} 落選メール送信失敗")
             rejected_count += 1
         messages.success(request, f"{rejected_count} 件を落選処理しました")
     reject_applications.short_description = "選択した応募を落選処理する"

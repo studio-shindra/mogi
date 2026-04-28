@@ -175,9 +175,9 @@ export function useStaffActions() {
     }
   }
 
-  async function confirmApplication(application) {
+  async function confirmApplication(application, assignedSeatTierId) {
     try {
-      await staffConfirmApplication(application.id)
+      await staffConfirmApplication(application.id, assignedSeatTierId)
       applications.value = applications.value.filter((a) => a.id !== application.id)
       setFlash('success', `${application.guest_name} さんを当選処理しました`)
       loadPerformanceSummaries()
@@ -185,6 +185,11 @@ export function useStaffActions() {
       console.error('当選処理失敗:', e)
       setFlash('error', `当選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
     }
+  }
+
+  function getSeatTiersFor(performanceId) {
+    const perf = performances.value.find((p) => p.id === performanceId)
+    return perf?.seat_tiers ?? []
   }
 
   async function rejectApplication(application) {
@@ -258,6 +263,7 @@ export function useStaffActions() {
     loadApplications,
     confirmApplication,
     rejectApplication,
+    getSeatTiersFor,
     markPaid,
     checkIn,
     cancel,

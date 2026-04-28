@@ -59,9 +59,11 @@ export async function staffListApplications(performanceId, search, fanclub) {
   return data.results
 }
 
-export async function staffConfirmApplication(reservationId) {
+export async function staffConfirmApplication(reservationId, assignedSeatTierId) {
   if (USE_MOCK) return { id: reservationId, status: 'confirmed' }
-  const { data } = await client.post(`/staff/applications/${reservationId}/confirm/`)
+  const { data } = await client.post(`/staff/applications/${reservationId}/confirm/`, {
+    assigned_seat_tier_id: assignedSeatTierId,
+  })
   return data
 }
 

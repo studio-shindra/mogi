@@ -72,8 +72,8 @@ watch(activeTab, (tab) => {
   else staff.search()
 })
 
-async function handleConfirmApplication(application) {
-  await staff.confirmApplication(application)
+async function handleConfirmApplication(application, assignedSeatTierId) {
+  await staff.confirmApplication(application, assignedSeatTierId)
 }
 
 async function handleRejectApplication(application) {
@@ -327,6 +327,7 @@ async function handleWalkIn(data) {
               v-for="a in staff.applications.value"
               :key="a.id"
               :application="a"
+              :seat-tiers="staff.getSeatTiersFor(a.performance?.id)"
               @confirm="handleConfirmApplication"
               @reject="handleRejectApplication"
             />

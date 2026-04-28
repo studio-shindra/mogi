@@ -489,9 +489,19 @@ def staff_application_reject(request, pk):
     reservation.status = Reservation.Status.CANCELLED
     reservation.save(update_fields=["status", "memo", "updated_at"])
 
+    email_sent = False
+    if reservation.guest_email:
+        try:
+            from .emails import send_application_lost_email
+            send_application_lost_email(reservation)
+            email_sent = True
+        except Exception:
+            logger.exception("落選メール送信失敗: reservation=%s", reservation.pk)
+
     return Response({
         "id": reservation.pk,
         "status": "cancelled",
+        "email_sent": email_sent,
     })
 
 
