@@ -35,7 +35,9 @@ def _seat_tier_queryset(include_staff_only=False):
         ),
     )
     if not include_staff_only:
-        qs = qs.filter(is_staff_only=False)
+        qs = qs.filter(is_staff_only=False).exclude(
+            code=SeatTier.TierCode.STAFF_SEAT,
+        )
     return qs
 
 
