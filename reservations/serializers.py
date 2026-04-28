@@ -541,7 +541,10 @@ class AccessLinkPublicSerializer(serializers.Serializer):
                     "starts_at": perf.starts_at,
                     "open_at": perf.open_at,
                     "seat_tiers": AvailableSeatTierSerializer(
-                        perf.seat_tiers.all().order_by("sort_order"), many=True
+                        perf.seat_tiers.filter(is_staff_only=False)
+                        .exclude(code=SeatTier.TierCode.STAFF_SEAT)
+                        .order_by("sort_order"),
+                        many=True,
                     ).data,
                 }
                 for perf in performances
