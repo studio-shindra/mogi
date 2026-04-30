@@ -89,7 +89,7 @@ async function onReject() {
     <td>
       <small class="text-muted" style="white-space: pre-line">{{ application.memo }}</small>
     </td>
-    <td class="text-end text-nowrap">
+    <td class="text-end text-nowrap" style="min-width: 320px">
       <template v-if="!choosing">
         <button
           class="btn btn-sm btn-success me-1"
