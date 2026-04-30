@@ -181,6 +181,7 @@ export function useStaffActions() {
       applications.value = applications.value.filter((a) => a.id !== application.id)
       setFlash('success', `${application.guest_name} さんを当選処理しました`)
       loadPerformanceSummaries()
+      loadPerformances()
     } catch (e) {
       console.error('当選処理失敗:', e)
       setFlash('error', `当選処理に失敗しました: ${e.response?.data?.detail ?? e.message}`)
@@ -211,6 +212,7 @@ export function useStaffActions() {
       reservation.status = 'cancelled'
       setFlash('success', `${reservation.guest_name} さんの予約をキャンセルしました`)
       loadPerformanceSummaries()
+      loadPerformances()
     } catch (e) {
       console.error('キャンセル失敗:', e)
       setFlash('error', `キャンセルに失敗しました: ${e.response?.data?.detail ?? e.message}`)
@@ -235,6 +237,7 @@ export function useStaffActions() {
       reservations.value.unshift(created)
       setFlash('success', `${data.guestName} さんの${label}を登録しました`)
       loadPerformanceSummaries()
+      loadPerformances()
       return created
     } catch (e) {
       console.error(`${label}登録失敗:`, e)
