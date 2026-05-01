@@ -1,5 +1,14 @@
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
+
+
+def _fmt_starts(dt):
+    return timezone.localtime(dt).strftime("%Y年%m月%d日 %H:%M")
+
+
+def _fmt_open(dt):
+    return timezone.localtime(dt).strftime("%H:%M")
 
 
 def send_reservation_email(reservation):
@@ -24,8 +33,8 @@ def send_reservation_email(reservation):
         "",
         f"作品: {event.title}",
         f"公演: {performance.label}",
-        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
-        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+        f"日時: {_fmt_starts(performance.starts_at)} 開演"
+        f"（{_fmt_open(performance.open_at)} 開場）",
     ]
     if event.venue_name:
         lines.append(f"会場: {event.venue_name}")
@@ -129,8 +138,8 @@ def send_application_won_email(reservation):
         "",
         f"作品: {event.title}",
         f"公演: {performance.label}",
-        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
-        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+        f"日時: {_fmt_starts(performance.starts_at)} 開演"
+        f"（{_fmt_open(performance.open_at)} 開場）",
     ]
     if event.venue_name:
         lines.append(f"会場: {event.venue_name}")
@@ -183,8 +192,8 @@ def send_application_lost_email(reservation):
         "",
         f"作品: {event.title}",
         f"公演: {performance.label}",
-        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
-        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+        f"日時: {_fmt_starts(performance.starts_at)} 開演"
+        f"（{_fmt_open(performance.open_at)} 開場）",
     ]
     if event.venue_name:
         lines.append(f"会場: {event.venue_name}")
@@ -244,8 +253,8 @@ def send_payment_complete_email(reservation):
         "",
         f"作品: {event.title}",
         f"公演: {performance.label}",
-        f"日時: {performance.starts_at.strftime('%Y年%m月%d日 %H:%M')} 開演"
-        f"（{performance.open_at.strftime('%H:%M')} 開場）",
+        f"日時: {_fmt_starts(performance.starts_at)} 開演"
+        f"（{_fmt_open(performance.open_at)} 開場）",
         f"会場: {event.venue_name}" if event.venue_name else "",
         f"席種: {seat_tier.name}" if seat_tier else "",
         f"枚数: {reservation.quantity}枚",
