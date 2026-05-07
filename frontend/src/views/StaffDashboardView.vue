@@ -26,7 +26,6 @@ const sortGetters = {
   date: (r) => r.performance?.starts_at || '',
   seat: (r) => r.seat_tier?.name || '',
   channel: (r) => r.sales_channel || '',
-  type: (r) => r.reservation_type || '',
   status: (r) => r.status || '',
 }
 
@@ -291,14 +290,13 @@ async function handleWalkIn(data) {
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th role="button" class="user-select-none" @click="toggleSort('name')">名前{{ sortArrow('name') }}</th>
-            <th role="button" class="user-select-none" @click="toggleSort('date')">日程{{ sortArrow('date') }}</th>
-            <th role="button" class="user-select-none" @click="toggleSort('seat')">席種{{ sortArrow('seat') }}</th>
-            <th role="button" class="user-select-none" @click="toggleSort('channel')">区分{{ sortArrow('channel') }}</th>
-            <th role="button" class="user-select-none" @click="toggleSort('type')">種別{{ sortArrow('type') }}</th>
-            <th role="button" class="user-select-none" @click="toggleSort('status')">状態{{ sortArrow('status') }}</th>
-            <th>メモ</th>
-            <th class="text-end">操作</th>
+            <th role="button" class="user-select-none" style="min-width: 140px" @click="toggleSort('name')">名前{{ sortArrow('name') }}</th>
+            <th role="button" class="user-select-none text-nowrap" @click="toggleSort('date')">日程{{ sortArrow('date') }}</th>
+            <th role="button" class="user-select-none text-nowrap" @click="toggleSort('seat')">席種{{ sortArrow('seat') }}</th>
+            <th role="button" class="user-select-none text-nowrap" @click="toggleSort('channel')">区分{{ sortArrow('channel') }}</th>
+            <th role="button" class="user-select-none text-nowrap" @click="toggleSort('status')">状態{{ sortArrow('status') }}</th>
+            <th style="min-width: 200px">メモ</th>
+            <th class="text-end text-nowrap">操作</th>
           </tr>
         </thead>
         <tbody>

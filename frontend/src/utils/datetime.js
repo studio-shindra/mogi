@@ -20,3 +20,13 @@ export function formatJstDateTime(iso) {
     hour12: false,
   })
 }
+
+export function formatJstDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('ja-JP', {
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    timeZone: 'Asia/Tokyo',
+  })
+}

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ReservationStatusBadge from '../reservation/ReservationStatusBadge.vue'
-import { formatJstDateTime } from '../../utils/datetime.js'
+import { formatJstDate, formatJstTime } from '../../utils/datetime.js'
 
 const props = defineProps({
   reservation: { type: Object, required: true },
@@ -10,8 +10,6 @@ const props = defineProps({
 const emit = defineEmits(['mark-paid', 'check-in', 'cancel', 'row-click'])
 
 const acting = ref(false)
-
-const typeLabel = { card: 'カード', cash: '現金', invite: '招待' }
 
 const channelMeta = {
   advance: { label: '先行', cls: 'bg-primary' },
@@ -64,15 +62,16 @@ async function onCancel() {
     </td>
     <!-- 日程 -->
     <td class="text-nowrap">
-      <small>{{ formatJstDateTime(reservation.performance?.starts_at) }}</small>
+      <div><small>{{ formatJstDate(reservation.performance?.starts_at) }}</small></div>
+      <div><small class="text-muted">{{ formatJstTime(reservation.performance?.starts_at) }}</small></div>
     </td>
     <!-- 席種・枚数 -->
-    <td>
+    <td class="text-nowrap">
       {{ reservation.seat_tier?.name }}
       <span class="text-muted">× {{ reservation.quantity }}</span>
     </td>
     <!-- 販売区分 -->
-    <td>
+    <td class="text-nowrap">
       <span
         v-if="channelBadge"
         class="badge rounded-pill"
@@ -80,10 +79,6 @@ async function onCancel() {
       >
         {{ channelBadge.label }}
       </span>
-    </td>
-    <!-- 種別 -->
-    <td>
-      <small>{{ typeLabel[reservation.reservation_type] }}</small>
     </td>
     <!-- ステータス -->
     <td>
@@ -99,33 +94,34 @@ async function onCancel() {
     </td>
     <!-- 操作 -->
     <td class="text-end text-nowrap" @click.stop>
-      <!-- 現金受領 -->
-      <button
-        v-if="reservation.payment_status === 'unpaid' && reservation.status === 'confirmed'"
-        class="btn btn-sm btn-warning me-1"
-        :disabled="acting"
-        @click="onMarkPaid"
-      >
-        現金受領
-      </button>
-      <!-- 入場処理 -->
-      <button
-        v-if="!reservation.checked_in && reservation.status === 'confirmed'"
-        class="btn btn-sm btn-success me-1"
-        :disabled="acting || (reservation.payment_status === 'unpaid')"
-        @click="onCheckIn"
-      >
-        入場
-      </button>
-      <!-- キャンセル -->
-      <button
-        v-if="reservation.status === 'confirmed' && !reservation.checked_in"
-        class="btn btn-sm btn-outline-danger"
-        :disabled="acting"
-        @click="onCancel"
-      >
-        キャンセル
-      </button>
+      <template v-if="reservation.status === 'confirmed' && !reservation.checked_in">
+        <!-- 主操作: 現金受領 + 入場（横並び） -->
+        <div class="d-flex gap-1 justify-content-end mb-1">
+          <button
+            v-if="reservation.payment_status === 'unpaid'"
+            class="btn btn-sm btn-warning"
+            :disabled="acting"
+            @click="onMarkPaid"
+          >
+            現金受領
+          </button>
+          <button
+            class="btn btn-sm btn-success"
+            :disabled="acting || (reservation.payment_status === 'unpaid')"
+            @click="onCheckIn"
+          >
+            入場
+          </button>
+        </div>
+        <!-- 副操作: キャンセル（別行） -->
+        <button
+          class="btn btn-sm btn-outline-danger"
+          :disabled="acting"
+          @click="onCancel"
+        >
+          キャンセル
+        </button>
+      </template>
       <!-- 入場済み表示 -->
       <span v-if="reservation.checked_in" class="text-muted small">入場済</span>
       <span v-if="reservation.status === 'cancelled'" class="text-muted small">キャンセル</span>
