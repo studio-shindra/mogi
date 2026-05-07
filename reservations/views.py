@@ -435,7 +435,7 @@ def staff_application_confirm(request, pk):
 
     now = timezone.now()
     stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
-    confirm_note = f"[system] application confirmed {stamp} → {seat_tier.name}"
+    confirm_note = f"二次先行当選者 {stamp}"
     reservation.seat_tier = seat_tier
     reservation.memo = (
         f"{reservation.memo}\n{confirm_note}".strip()
@@ -482,7 +482,7 @@ def staff_application_reject(request, pk):
 
     now = timezone.now()
     stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
-    reject_note = f"[system] application rejected {stamp}"
+    reject_note = f"二次先行落選者 {stamp}"
     reservation.memo = (
         f"{reservation.memo}\n{reject_note}".strip()
         if reservation.memo
@@ -527,7 +527,7 @@ def staff_cancel(request, pk):
 
     now = timezone.now()
     stamp = timezone.localtime(now).strftime("%Y-%m-%d %H:%M")
-    cancel_note = f"[system] staff cancelled {stamp}"
+    cancel_note = f"キャンセル処理 {stamp}"
     reservation.memo = (
         f"{reservation.memo}\n{cancel_note}".strip()
         if reservation.memo

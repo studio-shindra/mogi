@@ -366,7 +366,7 @@ class ApplicationConfirmTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         app.refresh_from_db()
         self.assertEqual(app.status, "confirmed")
-        self.assertIn("application confirmed", app.memo)
+        self.assertIn("二次先行当選者", app.memo)
 
     def test_reject_moves_applied_to_cancelled(self):
         app = self._make_applied()
@@ -374,7 +374,7 @@ class ApplicationConfirmTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         app.refresh_from_db()
         self.assertEqual(app.status, "cancelled")
-        self.assertIn("application rejected", app.memo)
+        self.assertIn("二次先行落選者", app.memo)
 
     def test_confirm_rejects_when_stock_insufficient(self):
         # 先に 10 席分 confirmed を作って満席にする
@@ -514,7 +514,7 @@ class StaffCancelTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         r.refresh_from_db()
         self.assertEqual(r.status, "cancelled")
-        self.assertIn("staff cancelled", r.memo)
+        self.assertIn("キャンセル処理", r.memo)
         # 在庫集計から外れる
         from django.db.models import Sum
         consumed = (

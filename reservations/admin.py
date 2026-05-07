@@ -141,7 +141,7 @@ class ReservationAdmin(admin.ModelAdmin):
             if reservation.quantity > remaining:
                 skipped.append(f"{reservation.pk}:残席不足({remaining})")
                 continue
-            note = f"[system] application confirmed {stamp}"
+            note = f"二次先行当選者 {stamp}"
             reservation.memo = f"{reservation.memo}\n{note}".strip() if reservation.memo else note
             reservation.status = Reservation.Status.CONFIRMED
             reservation.save(update_fields=["status", "memo", "updated_at"])
@@ -159,7 +159,7 @@ class ReservationAdmin(admin.ModelAdmin):
         for reservation in queryset:
             if reservation.status != Reservation.Status.APPLIED:
                 continue
-            note = f"[system] application rejected {stamp}"
+            note = f"二次先行落選者 {stamp}"
             reservation.memo = f"{reservation.memo}\n{note}".strip() if reservation.memo else note
             reservation.status = Reservation.Status.CANCELLED
             reservation.save(update_fields=["status", "memo", "updated_at"])

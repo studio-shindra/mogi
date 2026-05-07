@@ -247,6 +247,7 @@ class WalkInCreateSerializer(serializers.Serializer):
     seat_tier_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1, max_value=4)
     guest_name = serializers.CharField(max_length=200)
+    guest_email = serializers.EmailField(required=False, allow_blank=True, default="")
     guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     memo = serializers.CharField(required=False, allow_blank=True, default="")
     sales_channel = serializers.ChoiceField(
@@ -326,6 +327,7 @@ class WalkInCreateSerializer(serializers.Serializer):
             status=Reservation.Status.CONFIRMED,
             payment_status=payment_status,
             guest_name=validated_data["guest_name"],
+            guest_email=validated_data.get("guest_email", ""),
             guest_phone=validated_data.get("guest_phone", ""),
             memo=validated_data.get("memo", ""),
         )

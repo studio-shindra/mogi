@@ -16,6 +16,7 @@ const quantity = ref(1)
 const bookingMode = ref('advance') // 'advance' = 事前予約 / 'walk_in' = 当日券
 const salesChannel = ref('general')
 const guestName = ref('')
+const guestEmail = ref('')
 const guestPhone = ref('')
 const memo = ref('')
 
@@ -115,6 +116,7 @@ function resetForm() {
   bookingMode.value = 'advance'
   salesChannel.value = 'general'
   guestName.value = ''
+  guestEmail.value = ''
   guestPhone.value = ''
   memo.value = ''
 }
@@ -128,6 +130,7 @@ async function handleSubmit() {
       seat_tier_id: seatTierId.value,
       quantity: quantity.value,
       guest_name: guestName.value.trim(),
+      guest_email: guestEmail.value.trim(),
       guest_phone: guestPhone.value.trim(),
       memo: memo.value.trim(),
       sales_channel: salesChannel.value,
@@ -313,6 +316,18 @@ async function handleSubmit() {
           class="form-control"
           placeholder="090-1234-5678"
           v-model="guestPhone"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- メール -->
+      <div class="mb-3">
+        <label class="form-label small text-muted">メールアドレス（任意）</label>
+        <input
+          type="email"
+          class="form-control"
+          placeholder="example@mail.com"
+          v-model="guestEmail"
           autocomplete="off"
         />
       </div>
