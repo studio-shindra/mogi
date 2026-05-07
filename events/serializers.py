@@ -1,4 +1,5 @@
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Event, Performance, SeatTier
@@ -56,6 +57,7 @@ class PerformanceSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     performances = PerformanceSerializer(many=True, read_only=True)
+    public_entry_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -71,6 +73,13 @@ class EventSerializer(serializers.ModelSerializer):
             "public_entry_enabled",
             "performances",
         ]
+
+    def get_public_entry_enabled(self, obj):
+        if not obj.public_entry_enabled:
+            return False
+        if obj.public_entry_release_at and obj.public_entry_release_at > timezone.now():
+            return False
+        return True
 
 
 class EventListSerializer(serializers.ModelSerializer):

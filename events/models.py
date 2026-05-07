@@ -13,6 +13,12 @@ class Event(models.Model):
     cast = models.TextField("出演", blank=True)
     flyer_image_url = models.URLField("フライヤー画像URL", max_length=500, blank=True)
     public_entry_enabled = models.BooleanField("本URL公開", default=True)
+    public_entry_release_at = models.DateTimeField(
+        "本URL公開予定日時",
+        null=True,
+        blank=True,
+        help_text="指定するとこの日時以降に公開されます。空なら即時公開。",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
