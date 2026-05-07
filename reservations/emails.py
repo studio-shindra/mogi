@@ -226,6 +226,57 @@ def send_application_lost_email(reservation):
     )
 
 
+def send_reservation_cancelled_email(reservation):
+    """予約キャンセル処理時にゲストへ通知メールを送信する。"""
+    if not reservation.guest_email:
+        return
+
+    performance = reservation.performance
+    event = performance.event
+
+    subject = f"【{event.title}】ご予約キャンセルのご連絡"
+
+    lines = [
+        f"{reservation.guest_name} 様",
+        "",
+        "下記のご予約をキャンセル処理いたしました。",
+        "",
+        f"作品: {event.title}",
+        f"公演: {performance.label}",
+        f"日時: {_fmt_starts(performance.starts_at)} 開演"
+        f"({_fmt_open(performance.open_at)} 開場)",
+    ]
+    if event.venue_name:
+        lines.append(f"会場: {event.venue_name}")
+    if reservation.seat_tier:
+        lines.append(f"席種: {reservation.seat_tier.name}")
+    lines.append(f"枚数: {reservation.quantity}枚")
+
+    lines += [
+        "",
+        "今後ともコヤナギシンのご愛顧のほど、よろしくお願いいたします。",
+    ]
+
+    if event.organizer_email:
+        lines += [
+            "",
+            "ご不明な点は下記までご連絡ください。",
+            event.organizer_email,
+        ]
+
+    if event.email_signature:
+        lines += ["", event.email_signature]
+    else:
+        lines += ["", "---", "Mogi"]
+
+    send_mail(
+        subject=subject,
+        message="\n".join(lines),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[reservation.guest_email],
+    )
+
+
 def send_payment_complete_email(reservation):
     """決済完了時にゲストへ確認メールを送信する。"""
     if not reservation.guest_email:

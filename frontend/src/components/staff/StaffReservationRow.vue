@@ -124,7 +124,7 @@ async function onCancel() {
         :disabled="acting"
         @click="onCancel"
       >
-        取消
+        キャンセル
       </button>
       <!-- 入場済み表示 -->
       <span v-if="reservation.checked_in" class="text-muted small">入場済</span>

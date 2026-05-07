@@ -96,7 +96,9 @@ def staff_reservation_list(request):
     """GET /api/staff/reservations/?performance=&search=&sales_channel= — 受付検索"""
     qs = Reservation.objects.select_related(
         "performance__event", "seat_tier",
-    ).exclude(status=Reservation.Status.APPLIED).order_by("-created_at")
+    ).exclude(
+        status__in=[Reservation.Status.APPLIED, Reservation.Status.CANCELLED]
+    ).order_by("-created_at")
 
     performance_id = request.query_params.get("performance")
     if performance_id:
@@ -534,9 +536,19 @@ def staff_cancel(request, pk):
     reservation.status = Reservation.Status.CANCELLED
     reservation.save(update_fields=["status", "memo", "updated_at"])
 
+    email_sent = False
+    if reservation.guest_email:
+        try:
+            from .emails import send_reservation_cancelled_email
+            send_reservation_cancelled_email(reservation)
+            email_sent = True
+        except Exception:
+            logger.exception("キャンセルメール送信失敗: reservation=%s", reservation.pk)
+
     return Response({
         "id": reservation.pk,
         "status": "cancelled",
+        "email_sent": email_sent,
     })
 
 
