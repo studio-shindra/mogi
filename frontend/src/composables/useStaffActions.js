@@ -5,6 +5,7 @@ import {
   staffCheckIn,
   staffWalkIn,
   staffCancel,
+  staffUpdateReservation,
   staffListApplications,
   staffConfirmApplication,
   staffRejectApplication,
@@ -219,6 +220,26 @@ export function useStaffActions() {
     }
   }
 
+  // --- 予約編集 ---
+  async function updateReservation(reservation, payload) {
+    try {
+      const updated = await staffUpdateReservation(reservation.id, payload)
+      const idx = reservations.value.findIndex((r) => r.id === reservation.id)
+      if (idx !== -1) reservations.value.splice(idx, 1, updated)
+      setFlash('success', `${updated.guest_name} さんの予約を更新しました`)
+      loadPerformanceSummaries()
+      loadPerformances()
+      return updated
+    } catch (e) {
+      console.error('予約編集失敗:', e)
+      const detail = e.response?.data?.detail
+        || Object.values(e.response?.data || {})[0]
+        || e.message
+      setFlash('error', `予約編集に失敗しました: ${detail}`)
+      throw e
+    }
+  }
+
   // --- 当日券／事前予約作成 ---
   async function createWalkIn(data) {
     const channel = data.salesChannel || 'walk_in'
@@ -270,6 +291,7 @@ export function useStaffActions() {
     markPaid,
     checkIn,
     cancel,
+    updateReservation,
     createWalkIn,
   }
 }

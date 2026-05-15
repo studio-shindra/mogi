@@ -38,6 +38,12 @@ export async function staffCancel(reservationId) {
   return data
 }
 
+export async function staffUpdateReservation(reservationId, payload) {
+  if (USE_MOCK) return { id: reservationId, ...payload }
+  const { data } = await client.patch(`/staff/reservations/${reservationId}/update/`, payload)
+  return data
+}
+
 // ---- Applications（二次先行応募） ----
 
 export async function createApplication(payload) {

@@ -20,6 +20,7 @@ urlpatterns = [
     path("staff/reservations/<int:pk>/mark-paid/", views.staff_mark_paid, name="staff-mark-paid"),
     path("staff/reservations/<int:pk>/check-in/", views.staff_check_in, name="staff-check-in"),
     path("staff/reservations/<int:pk>/cancel/", views.staff_cancel, name="staff-cancel"),
+    path("staff/reservations/<int:pk>/update/", views.staff_reservation_update, name="staff-reservation-update"),
     # Applications（二次先行応募）
     path("applications/", views.application_create, name="application-create"),
     path("staff/applications/", views.staff_application_list, name="staff-application-list"),

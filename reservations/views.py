@@ -18,6 +18,7 @@ from .serializers import (
     ApplicationCreateSerializer,
     ReservationCreateSerializer,
     ReservationDetailSerializer,
+    ReservationUpdateSerializer,
     StaffReservationSerializer,
     WalkInCreateSerializer,
 )
@@ -173,6 +174,28 @@ def staff_check_in(request, pk):
         "checked_in": True,
         "checked_in_at": reservation.checked_in_at,
     })
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def staff_reservation_update(request, pk):
+    """PATCH /api/staff/reservations/<id>/update/ — 受付編集"""
+    try:
+        reservation = Reservation.objects.get(pk=pk)
+    except Reservation.DoesNotExist:
+        return Response(
+            {"detail": "予約が見つかりません"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    serializer = ReservationUpdateSerializer(
+        data=request.data,
+        context={"reservation": reservation},
+    )
+    serializer.is_valid(raise_exception=True)
+    reservation = serializer.save()
+
+    return Response(StaffReservationSerializer(reservation).data)
 
 
 @api_view(["POST"])

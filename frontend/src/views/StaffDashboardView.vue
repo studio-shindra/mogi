@@ -152,6 +152,15 @@ async function handleWalkIn(data) {
     // flash はuseStaffActions側で設定済み
   }
 }
+
+async function handleReservationSave({ reservation, payload }) {
+  try {
+    const updated = await staff.updateReservation(reservation, payload)
+    selectedReservation.value = updated
+  } catch {
+    // flash はuseStaffActions側で設定済み
+  }
+}
 </script>
 
 <template>
@@ -393,7 +402,10 @@ async function handleWalkIn(data) {
     <!-- 予約詳細モーダル -->
     <ReservationDetailModal
       :reservation="selectedReservation"
+      :performances="staff.performances.value"
+      :get-seat-tiers-for="staff.getSeatTiersFor"
       @close="selectedReservation = null"
+      @save="handleReservationSave"
     />
   </div>
 </template>

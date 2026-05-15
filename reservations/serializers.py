@@ -333,6 +333,126 @@ class WalkInCreateSerializer(serializers.Serializer):
         )
 
 
+# ---- 受付編集 ----
+
+class ReservationUpdateSerializer(serializers.Serializer):
+    """受付スタッフが予約を編集する。送られたフィールドだけを更新する（partial）。"""
+    performance_id = serializers.IntegerField(required=False)
+    seat_tier_id = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(min_value=1, max_value=10, required=False)
+    sales_channel = serializers.ChoiceField(
+        choices=Reservation.SalesChannel.choices, required=False,
+    )
+    reservation_type = serializers.ChoiceField(
+        choices=Reservation.ReservationType.choices, required=False,
+    )
+    guest_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    guest_email = serializers.EmailField(required=False, allow_blank=True)
+    guest_phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    memo = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        from events.models import Performance
+
+        reservation = self.context["reservation"]
+
+        # 入場済み・キャンセル済みは編集禁止
+        if reservation.checked_in:
+            raise serializers.ValidationError(
+                {"detail": "入場済みの予約は編集できません"}
+            )
+        if reservation.status == Reservation.Status.CANCELLED:
+            raise serializers.ValidationError(
+                {"detail": "キャンセル済みの予約は編集できません"}
+            )
+
+        # 変更後の公演・席種・枚数を決定
+        new_performance = reservation.performance
+        if "performance_id" in data:
+            try:
+                new_performance = Performance.objects.select_related("event").get(
+                    pk=data["performance_id"],
+                )
+            except Performance.DoesNotExist:
+                raise serializers.ValidationError({"performance_id": "公演が見つかりません"})
+
+        new_seat_tier = reservation.seat_tier
+        if "seat_tier_id" in data:
+            if data["seat_tier_id"] is None:
+                new_seat_tier = None
+            else:
+                try:
+                    new_seat_tier = SeatTier.objects.get(pk=data["seat_tier_id"])
+                except SeatTier.DoesNotExist:
+                    raise serializers.ValidationError({"seat_tier_id": "席種が見つかりません"})
+
+        # 公演と席種の整合性
+        if new_seat_tier and new_seat_tier.performance_id != new_performance.pk:
+            raise serializers.ValidationError(
+                {"seat_tier_id": "この席種は指定した公演に属していません"}
+            )
+
+        new_quantity = data.get("quantity", reservation.quantity)
+
+        # 残席チェック（自分自身は除外）
+        if new_seat_tier is not None:
+            confirmed_qty = (
+                Reservation.objects.filter(
+                    seat_tier=new_seat_tier,
+                    status__in=["pending", "confirmed"],
+                )
+                .exclude(pk=reservation.pk)
+                .aggregate(total=Sum("quantity"))["total"]
+                or 0
+            )
+            remaining = new_seat_tier.capacity - confirmed_qty
+            if new_quantity > remaining:
+                raise serializers.ValidationError(
+                    {"quantity": f"残席が不足しています。{new_seat_tier.name}: 残り{remaining}枚"}
+                )
+
+        data["_performance"] = new_performance
+        data["_seat_tier"] = new_seat_tier
+        return data
+
+    def save(self):
+        reservation = self.context["reservation"]
+        data = self.validated_data
+
+        update_fields = ["updated_at"]
+
+        if "performance_id" in data:
+            reservation.performance = data["_performance"]
+            update_fields.append("performance")
+        if "seat_tier_id" in data:
+            reservation.seat_tier = data["_seat_tier"]
+            update_fields.append("seat_tier")
+        if "quantity" in data:
+            reservation.quantity = data["quantity"]
+            update_fields.append("quantity")
+        if "sales_channel" in data:
+            reservation.sales_channel = data["sales_channel"]
+            update_fields.append("sales_channel")
+        if "reservation_type" in data:
+            reservation.reservation_type = data["reservation_type"]
+            update_fields.append("reservation_type")
+        if "guest_name" in data:
+            reservation.guest_name = data["guest_name"]
+            update_fields.append("guest_name")
+        if "guest_email" in data:
+            reservation.guest_email = data["guest_email"]
+            update_fields.append("guest_email")
+        if "guest_phone" in data:
+            reservation.guest_phone = data["guest_phone"]
+            update_fields.append("guest_phone")
+        if "memo" in data:
+            reservation.memo = data["memo"]
+            update_fields.append("memo")
+
+        reservation.save(update_fields=update_fields)
+        return reservation
+
+
 # ---- 仮受付 → 予約完成 ----
 
 class CompleteReservationSerializer(serializers.Serializer):
