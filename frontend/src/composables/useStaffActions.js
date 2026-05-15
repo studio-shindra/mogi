@@ -11,7 +11,7 @@ import {
   staffRejectApplication,
   staffPerformanceSummary,
 } from '../api/reservations.js'
-import { fetchEvents, fetchEventDetail } from '../api/events.js'
+import { fetchEvents, fetchStaffEventDetail } from '../api/events.js'
 
 export const SALES_CHANNELS = [
   { value: 'advance', label: '先行' },
@@ -48,7 +48,7 @@ export function useStaffActions() {
     try {
       const events = await fetchEvents()
       if (!events.length) return
-      const detail = await fetchEventDetail(events[0].slug)
+      const detail = await fetchStaffEventDetail(events[0].slug)
       eventDetail.value = detail
       performances.value = detail.performances ?? []
     } catch (e) {
