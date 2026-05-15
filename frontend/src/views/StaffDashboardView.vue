@@ -165,8 +165,7 @@ async function handleReservationSave({ reservation, payload }) {
 
 <template>
   <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1 class="h4 mb-0">受付</h1>
+    <div class="d-flex justify-content-end align-items-center mb-3">
       <div class="d-flex gap-2">
         <RouterLink to="/manage/sales" class="btn btn-sm btn-outline-secondary">売上サマリー</RouterLink>
         <RouterLink
