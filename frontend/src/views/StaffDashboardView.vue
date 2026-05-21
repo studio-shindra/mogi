@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import client from '../api/client.js'
 import { useStaffActions, SALES_CHANNELS } from '../composables/useStaffActions.js'
 import StaffSearchBar from '../components/staff/StaffSearchBar.vue'
 import StaffReservationRow from '../components/staff/StaffReservationRow.vue'
@@ -12,6 +14,22 @@ import TotalReservationSummaryCard from '../components/staff/TotalReservationSum
 import TotalApplicationSummaryCard from '../components/staff/TotalApplicationSummaryCard.vue'
 
 const staff = useStaffActions()
+const router = useRouter()
+
+const loggingOut = ref(false)
+
+async function handleLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await client.post('/auth/logout/')
+  } catch {
+    // 失敗してもログイン画面へ
+  } finally {
+    loggingOut.value = false
+    router.replace({ name: 'manage-login' })
+  }
+}
 
 const showWalkIn = ref(false)
 const activeTab = ref('reservations')
@@ -181,6 +199,14 @@ async function handleReservationSave({ reservation, payload }) {
           @click="showWalkIn = !showWalkIn"
         >
           {{ showWalkIn ? '閉じる' : '当日券登録' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-danger"
+          :disabled="loggingOut"
+          @click="handleLogout"
+        >
+          {{ loggingOut ? 'ログアウト中...' : 'ログアウト' }}
         </button>
       </div>
     </div>
