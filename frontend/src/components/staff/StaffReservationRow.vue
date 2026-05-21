@@ -93,7 +93,7 @@ async function onCancel() {
       <small class="text-muted" style="white-space: pre-line">{{ reservation.memo }}</small>
     </td>
     <!-- 操作 -->
-    <td class="text-end text-nowrap" @click.stop>
+    <td class="text-end text-nowrap d-print-none" @click.stop>
       <template v-if="reservation.status === 'confirmed' && !reservation.checked_in">
         <!-- 主操作: 現金受領 + 入場（横並び） -->
         <div class="d-flex gap-1 justify-content-end mb-1">

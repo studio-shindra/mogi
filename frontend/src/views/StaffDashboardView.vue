@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import client from '../api/client.js'
 import { useStaffActions, SALES_CHANNELS } from '../composables/useStaffActions.js'
@@ -179,11 +179,32 @@ async function handleReservationSave({ reservation, payload }) {
     // flash はuseStaffActions側で設定済み
   }
 }
+
+// 印刷用
+const printDateTime = ref('')
+
+const selectedPerformanceLabel = computed(() => {
+  const p = staff.performances.value.find((x) => x.id === staff.selectedPerformanceId.value)
+  return p?.label || ''
+})
+
+const selectedSalesChannelLabel = computed(() => {
+  const ch = SALES_CHANNELS.find((c) => c.value === staff.selectedSalesChannel.value)
+  return ch?.label || ''
+})
+
+async function handlePrint() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  printDateTime.value = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  await nextTick()
+  window.print()
+}
 </script>
 
 <template>
   <div class="container-fluid py-3">
-    <div class="d-flex justify-content-end align-items-center mb-3">
+    <div class="d-flex justify-content-end align-items-center mb-3 d-print-none">
       <div class="d-flex gap-2">
         <RouterLink to="/manage/sales" class="btn btn-sm btn-outline-secondary">売上サマリー</RouterLink>
         <RouterLink
@@ -212,7 +233,7 @@ async function handleReservationSave({ reservation, payload }) {
     </div>
 
     <!-- タブ切替 -->
-    <ul class="nav nav-tabs mb-3">
+    <ul class="nav nav-tabs mb-3 d-print-none">
       <li class="nav-item">
         <button
           type="button"
@@ -246,7 +267,7 @@ async function handleReservationSave({ reservation, payload }) {
     </div>
 
     <!-- 当日券登録フォーム（予約タブのみ） -->
-    <div v-if="showWalkIn && activeTab === 'reservations'" class="card mb-3">
+    <div v-if="showWalkIn && activeTab === 'reservations'" class="card mb-3 d-print-none">
       <div class="card-body">
         <h6 class="card-title mb-3">当日券登録</h6>
         <WalkInForm :performances="staff.performances.value" @created="handleWalkIn" />
@@ -256,7 +277,7 @@ async function handleReservationSave({ reservation, payload }) {
     <!-- ===== 予約タブ ===== -->
     <template v-if="activeTab === 'reservations'">
     <!-- 公演別サマリーカード（上段: 運営状況）+ 左端に全公演合計 -->
-    <PerformanceSummaryCards :summaries="staff.performanceSummaries.value">
+    <PerformanceSummaryCards :summaries="staff.performanceSummaries.value" class="d-print-none">
       <template #leading>
         <TotalReservationSummaryCard :summaries="staff.performanceSummaries.value" />
       </template>
@@ -264,6 +285,7 @@ async function handleReservationSave({ reservation, payload }) {
 
     <!-- 検索バー -->
     <StaffSearchBar
+      class="d-print-none"
       :search-query="staff.searchQuery.value"
       :selected-performance-id="staff.selectedPerformanceId.value"
       :selected-sales-channel="staff.selectedSalesChannel.value"
@@ -274,8 +296,28 @@ async function handleReservationSave({ reservation, payload }) {
       @search="staff.search()"
     />
 
+    <!-- 印刷ボタン（検索バー直下） -->
+    <div class="mb-3 d-print-none">
+      <button type="button" class="btn btn-sm btn-outline-dark" @click="handlePrint">
+        印刷
+      </button>
+    </div>
+
+    <!-- 印刷時のみ表示するヘッダー -->
+    <div class="d-none d-print-block mb-3 print-header">
+      <h4 class="mb-2">予約一覧</h4>
+      <div class="small">
+        <span v-if="selectedPerformanceLabel">公演: {{ selectedPerformanceLabel }}</span>
+        <span v-else>公演: 全公演</span>
+        <span v-if="selectedSalesChannelLabel" class="ms-3">区分: {{ selectedSalesChannelLabel }}</span>
+        <span v-if="staff.searchQuery.value" class="ms-3">検索: {{ staff.searchQuery.value }}</span>
+        <span class="ms-3">件数: {{ sortedReservations.length }}件</span>
+        <span class="ms-3">印刷日時: {{ printDateTime }}</span>
+      </div>
+    </div>
+
     <!-- 集計（上段: 当日運営の主要数値） -->
-    <div class="row g-2 mb-2">
+    <div class="row g-2 mb-2 d-print-none">
       <div class="col-auto">
         <span class="badge bg-dark">予約 {{ staff.summary.value.count }}件</span>
       </div>
@@ -302,7 +344,7 @@ async function handleReservationSave({ reservation, payload }) {
     </div>
 
     <!-- 販売区分サマリ -->
-    <div class="row g-1 mb-3">
+    <div class="row g-1 mb-3 d-print-none">
       <div
         v-for="ch in SALES_CHANNELS"
         :key="ch.value"
@@ -330,7 +372,7 @@ async function handleReservationSave({ reservation, payload }) {
             <th role="button" class="user-select-none text-nowrap" @click="toggleSort('channel')">区分{{ sortArrow('channel') }}</th>
             <th role="button" class="user-select-none text-nowrap" @click="toggleSort('status')">状態{{ sortArrow('status') }}</th>
             <th style="min-width: 200px">メモ</th>
-            <th class="text-end text-nowrap">操作</th>
+            <th class="text-end text-nowrap d-print-none">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -434,3 +476,24 @@ async function handleReservationSave({ reservation, payload }) {
     />
   </div>
 </template>
+
+<style scoped>
+@media print {
+  .print-header h4 {
+    margin-bottom: 0.25rem;
+  }
+  :deep(.table) {
+    color: #000;
+  }
+  :deep(.table th),
+  :deep(.table td) {
+    border-color: #555 !important;
+  }
+  :deep(.badge) {
+    color: #000 !important;
+    background-color: transparent !important;
+    border: 1px solid #555;
+    font-weight: normal;
+  }
+}
+</style>
